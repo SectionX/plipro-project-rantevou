@@ -1,0 +1,12 @@
+run_tests.sh
+install-dev.sh
+install-dev.bat
+venv
+build/
+pyinit.egg-info
+**/__pycache__
+.env
+.mypy_cache
+.pytest_cache
+.tox
+.test_commit.sh

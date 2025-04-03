@@ -1,0 +1,40 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rantevou"
+version = "0.1"
+dependencies = []
+requires-python = ">=3.8"
+authors = [
+{name = "YourName", email = "Youremail@mail.tld"},
+]
+maintainers = []
+description = "Add a description of your project"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["add", "keywords", "for", "pypa"]
+classifiers = [
+"Programming Language :: Python",
+]
+
+[tool.setuptools]
+packages = ["rantevou", "rantevou.src"]
+
+[project.optional-dependencies]
+
+[project.urls]
+Homepage = ""
+Documentation = ""
+Repository = ""
+"Bug Tracker" = ""
+Changelog = ""
+
+[project.scripts]
+rantevou = "rantevou:__main__.main"
+
+[project.gui-scripts]
+
+[project.entry-points]
