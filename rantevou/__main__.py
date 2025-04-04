@@ -1,4 +1,4 @@
-from .src.view.window import root
+from .src.view import root
 
 
 def main():
