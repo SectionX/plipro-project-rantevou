@@ -35,6 +35,10 @@ class AppFrame(tk.Frame):
         self.body = BodyFrame(self.container, self.root, background="white")
         self.footer = Footer(self.container, self.root)
 
+        self.initialize_header()
+        self.initialize_body()
+        self.initialize_footer()
+
     def initialize_header(self):
         self.header.pack(fill="x")
 

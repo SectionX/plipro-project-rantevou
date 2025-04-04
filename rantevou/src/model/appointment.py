@@ -1,20 +1,20 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from datetime import datetime
 
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey
 
-class Base(DeclarativeBase):
-    pass
+from .session import Base
 
 
 class Appointment(Base):
     __tablename__ = "appointment"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    date: Mapped[str]
-    time: Mapped[str]
-    customer_id: Mapped[int] = mapped_column(foreign_key="customer.id")
+    date: Mapped[datetime]
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
 
     def __repr__(self):
         return (
             f"Appointment(id={self.id}, date={self.date}, "
-            f"time={self.time}, customer_id={self.customer_id})"
+            f"customer_id={self.customer_id})"
         )
