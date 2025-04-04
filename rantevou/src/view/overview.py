@@ -6,11 +6,12 @@ class Overview(tk.Frame):
     def __init__(self, root):
         tk.Frame.__init__(self, root)
         self.root = root
+        self.name = "overview"
 
-    def initialize(self):
+    def initialize(self, frames):
         buttons = [
             GoToButton(self, name.title(), self.root, name)
-            for name in self.root.children
+            for name in frames
             if name != "overview"
         ]
         for i in range(0, 2):
