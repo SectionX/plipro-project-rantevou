@@ -1,10 +1,6 @@
-import tkinter as tk
+from .abstract_views import AppFrame
 
 
-class Customers(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-
-
-def create_customer_view(parent):
-    return Customers(parent)
+class Customers(AppFrame):
+    def __init__(self, root, name="customers"):
+        super().__init__(root, name)

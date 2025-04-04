@@ -1,10 +1,6 @@
-import tkinter as tk
+from .abstract_views import AppFrame
 
 
-class Alerts(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-
-
-def create_alerts_view(parent):
-    return Alerts(parent)
+class Alerts(AppFrame):
+    def __init__(self, root, name="alerts"):
+        super().__init__(root, name)

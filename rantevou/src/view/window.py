@@ -1,27 +1,26 @@
 import tkinter as tk
-from .overview import create_overview
-from .appointments import create_appointments_view
 
 
 class Window(tk.Tk):
 
-    create_frame = {
-        "overview": create_overview,
-        "appointments": create_appointments_view,
-    }
-
     def __init__(self, title="Appointments App", width=800, height=600):
         super().__init__()
-        self.title(title)
         self.geometry(f"{width}x{height}")
+        self.title(title)
 
-        self.windowframe = create_overview(self)
+    def initialize_frames(self, frame_dict):
+        self.children = frame_dict
+        overview = next(iter(self.children.values()))
+        overview.initialize()  # type: ignore
+
+        self.windowframe = self.children["overview"]
         self.windowframe.pack(fill="both", expand=True)
 
     def change_frame(self, frame_name):
-        self.windowframe.destroy()
-        self.windowframe = self.create_frame[frame_name](self)
+        self.windowframe.forget()
+        self.windowframe = self.children[frame_name]
         self.windowframe.pack(fill="both", expand=True)
 
     def run(self):
         self.mainloop()
+        self.destroy()
