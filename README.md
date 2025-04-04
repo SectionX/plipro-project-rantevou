@@ -27,7 +27,7 @@ This package is recommended for simple cli programs or libraries.<br>
 * To get started quickly, you can put your code in the init or main files
 * It's good practice to get used to testing.
 * You can run the run_tests.sh script or create your own.
-* You can also use tools like ptw which runs tests when it detects a change in file.
+* You can also use tools like ptw which runs tests when it detects a change in afile.
 * Lastly you can run tox. The basic configuration tests the last 3 python versions.
 * It's recommended to run tox before commiting to main. Tox is slow as it installs whole environments.
 
