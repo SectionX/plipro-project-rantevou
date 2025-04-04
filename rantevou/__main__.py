@@ -1,14 +1,25 @@
+from .src.view.window import Window
+from .src.view.overview import Overview
+from .src.view.statistics import Statistics
+from .src.view.customers import Customers
+from .src.view.appointments import Appointments
+from .src.view.alerts import Alerts
+
+
 def main():
-    '''
-    Whatever you write here can be run either by
-    python -m rantevou args...
-    or
-    rantevou args...
+    root = Window()
+    root.load_frames(
+        [
+            Overview(root),
+            Statistics(root),
+            Customers(root),
+            Appointments(root),
+            Alerts(root),
+        ]
+    )
 
-    By default, the executable script is only installed
-    in the virtual environment.
-    '''
+    root.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
