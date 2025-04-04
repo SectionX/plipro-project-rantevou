@@ -20,8 +20,14 @@ class CustomerControl:
         self.session.delete(customer)
         self.session.commit()
 
-    def update_customer(self, id, **fields):
-        pass
+    def update_customer(self, customer):
+        old_customer = self.session.query(Customer).filter_by(id=customer.id).first()
+        if old_customer:
+            old_customer.name = customer.name
+            old_customer.surname = customer.surname
+            old_customer.email = customer.email
+            old_customer.phone = customer.phone
+        self.session.commit()
 
     def get_customer_by_id(self, id):
         return self.session.query(self.customer).filter_by(id=id).first()
