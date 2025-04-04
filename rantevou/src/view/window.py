@@ -1,3 +1,14 @@
+"""
+Ορίζει το κεντρικό παράθυρο της εφαρμογής πάνω στο οποίο υπάρχουν όλα
+τα σχετικά frames της εφαρμογής (με frame εννοούμε τα παράθυρα που αφορούν
+την κάθε ξεχωριστή λειτουργία της εφαρμογής)
+
+Η "αρχική σελίδα" της εφαρμογής είναι η Overview, όπως ορίζεται στο overview.py
+και φέρει κουμπιά που καλούν τα συγκεκριμένα frames. Πχ το κουμπί "Appointments"
+ανοίγει το frame της εφαρμογής "Appointments". Το πρόγραμμα την αναγνωρίζει και
+την διαχειρίζεται αυτόματα.
+"""
+
 import tkinter as tk
 
 
@@ -9,6 +20,7 @@ class Window(tk.Tk):
         self.title(title)
 
     def initialize_frames(self, frame_dict):
+        """ """
         self.children = frame_dict
         overview = next(iter(self.children.values()))
         overview.initialize()  # type: ignore

@@ -32,10 +32,18 @@ class AppFrame(tk.Frame):
         self.container.pack(fill="both", expand=True)
 
         self.header = Header(self.container, self.root)
+        self.body = BodyFrame(self.container, self.root, background="white")
+        self.footer = Footer(self.container, self.root)
+
+    def initialize_header(self):
         self.header.pack(fill="x")
 
-        self.body = BodyFrame(self.container, self.root, background="white")
+    def initialize_footer(self):
+        self.footer.pack(fill="x")
+
+    def initialize_body(self):
+        self.body_logic()
         self.body.pack(fill="both", expand=True)
 
-        self.footer = Footer(self.container, self.root)
-        self.footer.pack(fill="x")
+    def body_logic(self):
+        pass
