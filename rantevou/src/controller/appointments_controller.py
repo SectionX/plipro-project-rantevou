@@ -21,7 +21,13 @@ class AppointmentControl:
         self.session.commit()
 
     def update_appointment(self, appointment):
-        pass
+        old_appointment = (
+            self.session.query(Appointment).filter_by(id=appointment.id).first()
+        )
+        if old_appointment:
+            old_appointment.date = appointment.date
+            old_appointment.customer_id = appointment.customer_id
+        self.session.commit()
 
     def get_appointment_by_id(self, id):
         return self.session.query(self.appointment).filter_by(id=id).first()
