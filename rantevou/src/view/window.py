@@ -49,11 +49,9 @@ class Window(tk.Tk):
         υπόλοιπο πρόγραμμα και αυτή η συνάρτηση θα μείνει ως μια κακή ανάμνηση.
         """
 
-        self.children.clear()
+        self.children.clear()  # Καθαρίζει τα κατάλοιπα του tkinter
         for frame in frames:
-            print(frame.name)
             self.children[frame.name] = frame
-            print(self.children)
 
         self.children["overview"].initialize(self.children)  # type: ignore
         self.windowframe = self.children["overview"]
