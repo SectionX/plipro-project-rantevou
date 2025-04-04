@@ -11,5 +11,9 @@ class Customer(Base):
     email: Mapped[str]
     phone: Mapped[str]
 
-    def __repr__(self):
-        return f"Customer(id={self.id}, name={self.name}, surname={self.surname}, email={self.email}, phone={self.phone})"
+    def __repr__(self) -> str:
+        return (
+            f"Customer(id={self.id}, name={self.name}, "
+            f"surname={self.surname}, email={self.email}"
+            f", phone={self.phone})"
+        )

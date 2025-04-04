@@ -17,7 +17,7 @@ class Mailer:
         τα κλέψει!
         """
 
-    def start_server(self):
+    def start_server(self) -> None:
         self.server = smtplib.SMTP("smtp.gmail.com", 587)
         self.server.starttls()
         self.server.login(
@@ -33,11 +33,11 @@ class Mailer:
 
         with SessionLocal() as session:
             result = (
-                session.query(Customer, Appointment).join(Appointment)
-                # .filter_by(Customer.id.in_(ids))
+                session.query(Customer, Appointment)
+                .join(Appointment)
+                .filter(Customer.id.in_(ids))
                 .all()
             )
-        print(result)
 
         for customer, appointment in result:
             email = MIMEText(body.format(customer.name, appointment.date))

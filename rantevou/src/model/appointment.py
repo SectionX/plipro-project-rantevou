@@ -13,7 +13,7 @@ class Appointment(Base):
     date: Mapped[datetime]
     customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"Appointment(id={self.id}, date={self.date}, "
             f"customer_id={self.customer_id})"

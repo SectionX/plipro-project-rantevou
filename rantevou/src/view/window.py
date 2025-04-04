@@ -21,7 +21,7 @@ class Window(tk.Tk):
         self.title(title)
         self.children = OrderedDict()
 
-    def load_frames(self, frames: list):
+    def load_frames(self, frames: list) -> None:
         """
         Αυτή η συνάρτηση υπάρχει για να λύσει ένα πρόβλημα που μάλλον
         δημιουργείται λόγο της απειρίας μου με το tkinter.
@@ -57,7 +57,7 @@ class Window(tk.Tk):
         self.windowframe = self.children["overview"]
         self.windowframe.pack(fill="both", expand=True)
 
-    def change_frame(self, frame_name):
+    def change_frame(self, frame_name) -> None:
         """
         Αλλάζει το ενεργό frame στο παράθυρο. Χρησιμοποείται από το widget
         GoToButton στο views/navigation.py
@@ -66,6 +66,6 @@ class Window(tk.Tk):
         self.windowframe = self.children[frame_name]
         self.windowframe.pack(fill="both", expand=True)
 
-    def run(self):
+    def run(self) -> None:
         self.mainloop()
         self.destroy()
