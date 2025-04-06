@@ -70,8 +70,3 @@ class AppFrame(tk.Frame):
         self.initialize_header()
         self.initialize_body()
         self.initialize_footer()
-
-
-class PopUp(tk.Toplevel):
-    def __init__(self, parent: tk.Frame, *args, **kwargs):
-        tk.Toplevel.__init__(self, parent, *args, **kwargs)

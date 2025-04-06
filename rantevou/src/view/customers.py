@@ -1,3 +1,10 @@
+"""
+Θέλει πολλά refactors αλλα δουλεύει όπως πρέπει προς το παρών.
+
+Θα πρέπει να προσθεθεί κώδικας που συνδέεται με το Mailer αλλά δεν
+είμαι σίγουρος αν είναι καλύτερα να γίνει εδώ ή σε κάποιο άλλο module.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
@@ -11,14 +18,12 @@ from ..controller.customers_controller import CustomerControl
 class Customers(AppFrame):
     def __init__(self, root, name="customers"):
         super().__init__(root, name)
+
+        # Σύνδεση με την βάση μέσω του controller.
         self.controller = CustomerControl()
         self.customers = self.controller.get_customers()
-        self.current_selected_id: int = -1
-        self.current_selected_row: list = []
-        self.edit_panel_is_open = False
-        self.body.configure(background="grey")
-        self.action_panel = None
 
+        # Δημιουργία των βασικών widget
         self.searchbar = tk.Entry(self.body, width=30)
         self.searchbar.focus()
         self.tree = ttk.Treeview(self.body)
@@ -49,6 +54,9 @@ class Customers(AppFrame):
         self.initialize()
         self.initialize_tree()
 
+        # Δεν είμαι σίγουρος πιο widget παίρνει τον έλεγχο μετά την καταστροφή
+        # των pop up, γιαυτό απλά έβαλα event listeners στα πάντα. Θα το βελτιώσω
+        # σε δεύτερο χρόνο.
         self.bind("<Key>", self.search)
         self.searchbar.bind("<KeyRelease>", lambda _: self.search())
         self.body.bind("<Key>", self.search)
@@ -56,63 +64,35 @@ class Customers(AppFrame):
         self.tree.bind("<ButtonRelease-1>", self._tree_click_handler)
         self.tree.bind("<Button-1>", self.tree_identify)
 
+    ####################################################################
+    ##
+    ##  Εδώ είναι όλες οι μέθοδοι που αφορούν το treeview widget.
+    ##  Callbacks, ανίχνευση στοιχείων με βάση το mouse click,
+    ##  sort, search και την αρχικοποίηση όλων των στοιχείων του.
+    ##
+    ##
+
     def tree_identify(self, event):
+        """
+        Λογγάρει το τελευταίο ενεργό κελί του treeview. Είναι
+        αντίστοιχο με την εντολή self.tree.item(self.tree.focus())
+        """
         self.row_focus = self.tree.identify_row(event.y)
         self.column_focus = self.tree.identify_column(event.x)
         self.value_focus = self.tree.item(self.row_focus)["values"]
-        print(self.value_focus)
-
-    def initialize_tree(self):
-        font = Font()
-        em = font.measure("m")
-        self.sort_state = [False, False, False, False, False]
-
-        self.tree["columns"] = ("id", "name", "surname", "phone", "email")
-        self.tree.column("#0", width=0, stretch=False)
-        self.tree.column("id", width=0 * em, stretch=False)
-        self.tree.column("name", width=9 * em, stretch=False)
-        self.tree.column("surname", width=10 * em, stretch=False)
-        self.tree.column("phone", width=8 * em, stretch=False)
-        self.tree.column("email", width=20 * em, stretch=True)
-        self.tree.heading("#0", text="", anchor="w")
-        self.tree.heading("id", text="ID", anchor="w")
-        self.tree.heading("name", text="Name", anchor="w")
-        self.tree.heading("surname", text="Surname", anchor="w")
-        self.tree.heading("phone", text="Phone", anchor="w")
-        self.tree.heading("email", text="Email", anchor="w")
-
-        self.populate_tree()
-
-    def reset_tree(self, filter=None, hard_reset=False):
-        self.focus()
-        self.tree.delete(*self.tree.get_children())
-        if hard_reset:
-            self.customers = self.controller.get_customers()
-        self.populate_tree(filter)
-
-    def populate_tree(self, filter=None):
-        for customer in self.customers:
-            if filter is None or (filter and filter(customer)):
-                self.tree.insert(
-                    "",
-                    "end",
-                    values=(
-                        customer.id,
-                        customer.name,
-                        customer.surname,
-                        customer.phone,
-                        customer.email,
-                    ),
-                )
-
-    def _tree_click_handler(self, event):
-        self.tree_identify(event)
-        print(self.row_focus, self.column_focus)
-        if not self.value_focus:
-            self.sort()
 
     def sort(self):
+        """
+        Κώδικας που κάνει σορτ όταν γίνει mouse click στο header μιας
+        στήλης. Το μόνο που κάνει αυτός ο κώδικας είναι να θυμάται αν
+        πρέπει να κάνει αύξων ή φθίνων sort.
+        """
+
+        # Τα column indices έχουν σχήμα ονομασίας #1, #2, #3
+        # οπότε αφαιρούμε την δίεση και το κάνουμε 0-βάση
         column_index = int(self.column_focus[1:]) - 1
+
+        # Κάνει reset το sort_state των άλλων στηλών.
         column = self.tree.heading(column_index)["text"].lower()
         for i in range(len(self.sort_state)):
             if i != column_index:
@@ -120,6 +100,7 @@ class Customers(AppFrame):
             else:
                 self.sort_state[i] = not self.sort_state[i]
 
+        # Αποφασίζει αν θα κάνει αύξων ή φθίνων sort
         reverse = True
         if self.sort_state[column_index]:
             reverse = False
@@ -128,10 +109,20 @@ class Customers(AppFrame):
         self.reset_tree()
 
     def search(self, event=None):
-        print(self.searchbar.focus_get())
+        """
+        Ο κώδικας για την μπάρα αναζήτησης. Γράφτηκε έτσι ώστε να δίνει
+        δυναμικά τα αποτελέσματα καθώς ο χρήστης πληκτρολογεί. Επίσης είναι
+        ρυθμισμένο ώστε να παίνει το focus όταν ο χρήστης πληκτρολογεί οπου
+        δήποτε στο Frame.
+        """
+
+        # Εστιάζει στην μπάρα αναζήτησης κατα την πληκτρολόγηση ανεξαρτήτου
+        # θέσεως.
         if self.searchbar != self.searchbar.focus_get():
             self.searchbar.focus()
             self.searchbar.insert("end", event.char)
+
+        # Αναζήτηση
         self.tree.delete(*self.tree.get_children())
         search_string = self.searchbar.get().lower()
         for customer in self.customers:
@@ -150,8 +141,103 @@ class Customers(AppFrame):
                     )
                     break
 
+    def initialize_tree(self):
+        """
+        Αρχικοποιήσεις των στοιχείων του treeview και άλλου state που
+        χρειάζεται για την ορθή λειτουργία.
+
+        sort_state -> Θυμάται αν το τελευταίο sort ήταν φθήνων η αύξων
+        maxlen-> Το μέγιστο μήκος των στοιχείων ανα στήλη για δυναμικό resize
+        """
+        # font = Font()
+        # em = font.measure("m")
+        self.sort_state = [False, False, False, False, False]
+        self.tree["columns"] = ("id", "name", "surname", "phone", "email")
+        self.maxlen = [10, 10, 10, 10, 10]
+
+        for customer in self.customers:
+            for i, name in enumerate(self.tree["columns"]):
+                if len(str(getattr(customer, name))) > self.maxlen[i]:
+                    self.maxlen[i] = len(str(getattr(customer, name)))
+
+        for i in range(-1, 5):
+
+            # Αυτά τα if είναι για να κρύψουν τα στοιχεία #0 και id. (width=0)
+            # To #0 είναι του treeview, το id του Customer.
+            if i < 0:
+                self.tree.column("#0", width=0, stretch=False)
+                self.tree.heading("#0", text="", anchor="w")
+            elif i == 0:
+                self.tree.column("id", width=0, stretch=False)
+                self.tree.heading("id", text="id", anchor="w")
+            else:
+
+                # Το πλάτος της στήλης υπολογίζεται με βάση τις μεγαλύτερες
+                # εγγραφές ανα στήλη.
+                self.tree.column(
+                    self.tree["columns"][i], width=self.maxlen[i] * 11, stretch=False
+                )
+                self.tree.heading(
+                    self.tree["columns"][i],
+                    text=self.tree["columns"][i].title(),
+                    anchor="w",
+                )
+
+        self.populate_tree()
+
+    def reset_tree(self, filter=None, hard_reset=False):
+        """
+        Αδειάζει το δέντρο για ανανέωση των στοιχείων
+        όταν κάνει sort/search/update κλπ
+        """
+        self.focus()
+        self.tree.delete(*self.tree.get_children())
+
+        # Με το hard_reset flag ξανακάνει query από την βάση
+        # δεδομένων. Χρήσιμο αν έχει προστεθεί κάποιος καινούριος
+        # πελάτης, επειδή πρέπει να μπει στην βάση δεδομένων για
+        # να πάρει id.
+        if hard_reset:
+            self.customers = self.controller.get_customers()
+        self.populate_tree(filter)
+
+    def populate_tree(self, filter=None):
+        """
+        Γεμίζει το δέντρο που άδειασε η reset_tree. Το filter
+        απλά δεν επιτρέπει αθέμητη ανανέωση κάποιων στοιχείων,
+        πχ στην περίπτωση που έχουμε διαγραφή πελάτη.
+        """
+        for customer in self.customers:
+            if filter is None or (filter and filter(customer)):
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        customer.id,
+                        customer.name,
+                        customer.surname,
+                        customer.phone,
+                        customer.email,
+                    ),
+                )
+
+    def _tree_click_handler(self, event):
+        """
+        Ορίζει την περιοχή που το mouse click τρέχει την sort
+        """
+        # To mouse click στο column header, δεν επιστρέφει value. Έτσι
+        # προσδιορίζουμε τον χώρο.
+        self.tree_identify(event)
+        if not self.value_focus:
+            self.sort()
+
     # Create Customer
     def open_customer_pop_up(self, prefill={}, edit_mode=False):
+        """
+        Δημιουργεί ένα pop up που επιτρέπει την επεξεργασία/προσθήκη
+        πελατών. Έχει ελαφρώς διαφορετική συμπεριφορά ανάλογα ποιος
+        το καλέι (create_customer, update_customer)
+        """
         self.popup = tk.Toplevel(self.body)
         name_entry = tk.Entry(self.popup, name="name")
         surname_entry = tk.Entry(self.popup, name="surname")
@@ -160,11 +246,15 @@ class Customers(AppFrame):
 
         self.popup.title("Add Customer")
         self.popup.geometry("250x400")
+
+        # Η prefill απλά βάζει γεμίζει τα tk.Entry widgets με κάποια
+        # default πληροφορία που την ορίζει η καλλούσα
         name_entry.insert(0, prefill.get("name") or "Enter name...")
         surname_entry.insert(0, prefill.get("surname") or "Enter surname...")
         phone_entry.insert(0, prefill.get("phone") or "Enter phone...")
         email_entry.insert(0, prefill.get("email") or "Enter email...")
 
+        # Εδώ γίνεται η επιλογή μεταξύ λειτουργίας create και update.
         if edit_mode:
             callback = self.update_customer
         else:
@@ -185,30 +275,44 @@ class Customers(AppFrame):
         self.popup.mainloop()
 
     def create_customer(self, prefill={}, initialize=True):
+        """
+        Δημιουργεί εναν νεον πελατη. Κάνει validate τα στοιχεία πρώτα
+        και ζητάει επανάληψη της εγγραφης.
+        """
+        # Επειδή θα γίνει επανάληψη με αναδρομή, αυτό το flag σταματάει
+        # το πρόγραμμα από το να φτιάξει νέο popup.
         if initialize:
             self.open_customer_pop_up(prefill)
 
-        entries: Iterator[tk.Entry] = filter(
-            lambda x: isinstance(x, tk.Entry), self.popup.winfo_children()
-        )
+        # Παίρνουμε τα δεδομένα από τα tk.Entries του popup.
+        children = self.popup.winfo_children()
+        entries = filter(lambda x: isinstance(x, tk.Entry), children)
 
         customer = {}
         for entry in entries:
-            print(entry, entry.winfo_name(), entry.get())
-            customer[entry.winfo_name()] = entry.get()
+            customer[entry.winfo_name()] = entry.get()  # type: ignore
 
+        # Ελέγχουμε αν τα δεδομένα είναι συμβατά με την οντότητα Customer
+        # Αν όχι ξανακάνουμε την διαδικασία από την αρχή.
         if not self.controller.validate_customer(customer):
             showerror("Error", "Make sure to include all fields")
             self.popup.destroy()
             self.create_customer(customer)
             return
 
+        # Αποδέσμευση μνήμης, ενημέρωση βάσης και ανανέωση του treeview.
         self.popup.destroy()
         showinfo("Success", "Customer added successfully")
         self.controller.create_customer(customer, threaded=False)
         self.reset_tree(hard_reset=True)
 
     def delete_customer(self):
+        """
+        Σβήσιμο του επιλεγμένου πελάτη. Ρωτάει πριν ολοκληρώσει την
+        διαγραφή.
+        """
+
+        # Απλός αλγόριθμος που απλά σβήνει μια εγγραφή με βάση το id
         values = self.tree.item(self.tree.focus())["values"]
         user_response = askyesno(
             message="Are you sure you want to delete this customer?"
@@ -220,17 +324,23 @@ class Customers(AppFrame):
             showinfo("Canceled", "Customer deletion canceled")
 
     def update_customer(self, prefill={}, initialize=True):
+        """
+        Αλλάζει τα στοιχεία του πελατη. Κάνει validate τα στοιχεία πρώτα
+        και ζητάει επανάληψη της εγγραφης.
+        """
+        # Το μόνο που κάνει αυτό το κομμάτι είναι να αρχικοποιήσει το pop-up
+        # με τα στοιχεία του επιλεγμένου πελάτη.
         if initialize:
             prefill = dict(zip(self.tree["columns"][1:], self.value_focus[1:]))
             self.open_customer_pop_up(prefill, edit_mode=True)
 
+        # Ίδια διαδικασία με create.
         entries: Iterator[tk.Entry] = filter(
-            lambda x: isinstance(x, tk.Entry), self.popup.winfo_children()
+            lambda x: isinstance(x, tk.Entry), self.popup.winfo_children()  # type: ignore
         )
 
         customer = {}
         for entry in entries:
-            print(entry, entry.winfo_name(), entry.get())
             customer[entry.winfo_name()] = entry.get()
 
         if not self.controller.validate_customer(customer):
