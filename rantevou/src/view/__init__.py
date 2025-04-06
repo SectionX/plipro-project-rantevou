@@ -15,15 +15,16 @@ __all__ = [
 ]
 
 
-def initialize_window():
+def create_window() -> Window:
+    """
+    Factory function που δημιουργεί και σετάρει την tkinter εφαρμογή
+    """
     root = Window()
-    root.load_frames(
-        [
-            Overview(root),
-            Appointments(root),
-            Customers(root),
-            Statistics(root),
-            Alerts(root),
-        ]
-    )
+    Overview(root)
+    Appointments(root)
+    Customers(root)
+    Statistics(root)
+    Alerts(root)
+    root.initialize()
+
     return root

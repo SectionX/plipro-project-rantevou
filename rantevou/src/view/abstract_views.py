@@ -1,16 +1,31 @@
 import tkinter as tk
 from .navigation import GoToButton
+from .window import Window
+
+
+class PopUp(tk.Toplevel):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Toplevel.__init__(self, parent, *args, **kwargs)
+        self.AppContext = parent.AppContext
 
 
 class Header(tk.Frame):
-    def __init__(self, parent, root, *args, **kwargs):
+    """
+    Header για όλα τα frames που κληρονομούν το AppFrame
+    """
+
+    def __init__(self, parent: tk.Frame, root: Window, *args, **kwargs):
         tk.Frame.__init__(
             self, parent, *args, height=20, border=1, borderwidth=1, **kwargs
         )
 
 
 class Footer(tk.Frame):
-    def __init__(self, parent, root, *args, **kwargs):
+    """
+    Footer για όλα τα frames που κληρονομούν το AppFrame
+    """
+
+    def __init__(self, parent: tk.Frame, root: Window, *args, **kwargs):
         tk.Frame.__init__(
             self, parent, *args, height=100, border=1, borderwidth=1, **kwargs
         )
@@ -18,15 +33,22 @@ class Footer(tk.Frame):
 
 
 class BodyFrame(tk.Frame):
-    def __init__(self, parent, root, *args, **kwargs):
+    """
+    Άδειο frame στο οποίο φέρει την επιχειρησιακή λογική του
+    κάθε AppFrame. Προγραμματίζεται στην μέθοδο body_logic του
+    AppFrame.
+    """
+
+    def __init__(self, parent: tk.Frame, root: Window, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
 
 class AppFrame(tk.Frame):
-    def __init__(self, root, name):
+    def __init__(self, root: Window, name: str):
         tk.Frame.__init__(self, root)
         self.name = name
         self.root = root
+        self.AppContext = root.AppContext
 
         self.container = tk.Frame(self)
         self.container.pack(fill="both", expand=True)
@@ -35,19 +57,16 @@ class AppFrame(tk.Frame):
         self.body = BodyFrame(self.container, self.root, background="white")
         self.footer = Footer(self.container, self.root)
 
+    def initialize_header(self) -> None:
+        self.header.pack(fill="x")
+
+    def initialize_footer(self) -> None:
+        self.footer.pack(fill="x")
+
+    def initialize_body(self) -> None:
+        self.body.pack(fill="both", expand=True)
+
+    def initialize(self):
         self.initialize_header()
         self.initialize_body()
         self.initialize_footer()
-
-    def initialize_header(self):
-        self.header.pack(fill="x")
-
-    def initialize_footer(self):
-        self.footer.pack(fill="x")
-
-    def initialize_body(self):
-        self.body_logic()
-        self.body.pack(fill="both", expand=True)
-
-    def body_logic(self):
-        pass
