@@ -8,17 +8,21 @@ class Overview(tk.Frame):
     def __init__(self, root: Window):
         tk.Frame.__init__(self, root)
         self.root = root
+        self.AppContext = root.AppContext
         self.name = "overview"
 
-    def initialize(self, frame_names: list[str]) -> None:
+    def initialize(self) -> None:
         """
         Αρχικοποιεί το overview δημιουργόντας τα κουμπιά
         πλοήγησης.
         """
+        appframes = filter(
+            lambda x: isinstance(x, AppFrame), self.root.winfo_children()
+        )
+
         buttons = [
-            GoToButton(self, name.title(), self.root, name)
-            for name in frame_names
-            if name != "overview"
+            GoToButton(self, frame.name.title(), self.root, frame.name)  # type: ignore
+            for frame in appframes
         ]
 
         # Σετάρει τα grids ώστε να γεμίζουν όλο τον χώρο

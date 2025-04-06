@@ -1,7 +1,12 @@
-from abc import abstractmethod
 import tkinter as tk
 from .navigation import GoToButton
 from .window import Window
+
+
+class PopUp(tk.Toplevel):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Toplevel.__init__(self, parent, *args, **kwargs)
+        self.AppContext = parent.AppContext
 
 
 class Header(tk.Frame):
@@ -43,6 +48,7 @@ class AppFrame(tk.Frame):
         tk.Frame.__init__(self, root)
         self.name = name
         self.root = root
+        self.AppContext = root.AppContext
 
         self.container = tk.Frame(self)
         self.container.pack(fill="both", expand=True)
@@ -51,10 +57,6 @@ class AppFrame(tk.Frame):
         self.body = BodyFrame(self.container, self.root, background="white")
         self.footer = Footer(self.container, self.root)
 
-        self.initialize_header()
-        self.initialize_body()
-        self.initialize_footer()
-
     def initialize_header(self) -> None:
         self.header.pack(fill="x")
 
@@ -62,9 +64,14 @@ class AppFrame(tk.Frame):
         self.footer.pack(fill="x")
 
     def initialize_body(self) -> None:
-        self.body_logic()
         self.body.pack(fill="both", expand=True)
 
-    @abstractmethod
-    def body_logic(self):
-        raise NotImplementedError
+    def initialize(self):
+        self.initialize_header()
+        self.initialize_body()
+        self.initialize_footer()
+
+
+class PopUp(tk.Toplevel):
+    def __init__(self, parent: tk.Frame, *args, **kwargs):
+        tk.Toplevel.__init__(self, parent, *args, **kwargs)

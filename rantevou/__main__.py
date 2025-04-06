@@ -22,6 +22,7 @@ def main():
 
     initialize_db()
     root = create_window()
+    root.change_frame("customers")
     root.run()
 
 

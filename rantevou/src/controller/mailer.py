@@ -1,6 +1,8 @@
 import pathlib
 import smtplib
+from threading import Thread
 from email.mime.text import MIMEText
+
 from ..model.session import SessionLocal
 from ..model.customer import Customer
 from ..model.appointment import Appointment
@@ -10,21 +12,30 @@ PATH_TO_EMAIL = pathlib.Path(__file__).parent.parent.parent / "data" / "email_bo
 
 class Mailer:
 
-    def __init__(self):
+    def start_server(self) -> None:
         """
         Αφήνω τα στοιχεία πρόσβασης στον κώδικα επειδή αυτό το email
         δεν θα χρησιμοποιηθεί για κάτι άλλο. Δίνω 10 ευρώ σε όποιον
         τα κλέψει!
         """
-
-    def start_server(self) -> None:
         self.server = smtplib.SMTP("smtp.gmail.com", 587)
         self.server.starttls()
         self.server.login(
             "plipro.hle55.team3@gmail.com", "lpri ryfl pdjr hlef"
         )  # App Password
 
-    def send_email(self, appointments, debug=False):
+    def send_email(self, appointments, debug=False) -> None:
+        """
+        Ασύγχρονο κάλεσμα στην _send_email για να μην κλειδώνει το προγραμμα
+        περιμένοντας την ανταπόκριση δικτύου.
+        """
+        Thread(target=self._send_email, args=(appointments, debug)).start()
+
+    def _send_email(self, appointments, debug=False):
+        """
+        Βρίσκει τους πελάτες που αντιστοιχούν στα ραντεβού και τους
+        στέλνει email
+        """
         self.start_server()
         ids = (appointment.customer_id for appointment in appointments)
 
