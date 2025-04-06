@@ -46,9 +46,14 @@ class BodyFrame(tk.Frame):
 class AppFrame(tk.Frame):
     def __init__(self, root: Window, name: str):
         tk.Frame.__init__(self, root)
+        """
+        Σκοπός της κλάσσης είναι να κληρονομεί μερικά χαρακτηριστικά
+        που θέλουμε να υπάρχουν σε όλα τα panels, όπως header/footer.
+        
+        Επίσης μπορούμε να υλοποιήσουμε λογική που λείπει από το tk.
+        """
         self.name = name
         self.root = root
-        self.AppContext = root.AppContext
 
         self.container = tk.Frame(self)
         self.container.pack(fill="both", expand=True)
@@ -70,3 +75,29 @@ class AppFrame(tk.Frame):
         self.initialize_header()
         self.initialize_body()
         self.initialize_footer()
+
+    def get_all_children(self, root=None, filter=None):
+        """
+        Αργόριθμος αναζήτησης δέντρου για την εύρεση όλων των
+        παιδιών του κάποιου root node. Μετά από πολύ αναζήτηση
+        φαίνεται ότι το tk δεν έχει κάποια σχετική μέθοδο.
+
+        Υλοποίηση με stack για να γλυτώσουμε την αναδρομή που
+        είναι εξαιρετικά αργή στην Python.
+        """
+        if root is None:
+            root = self
+
+        stack = [root]
+        self.all_children = []
+
+        while stack:
+            child = stack.pop()
+            if filter is None:
+                self.all_children.append(child)
+            else:
+                if filter(child):
+                    self.all_children.append(child)
+            stack.extend(child.winfo_children())
+
+        return self.all_children
