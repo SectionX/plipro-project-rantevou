@@ -19,27 +19,17 @@ class CustomerControl:
         return self.session.query(self.customer).all()
 
     def create_customer(self, customer: dict | Customer, threaded=False) -> None:
-<<<<<<< HEAD
-        if isinstance(customer, dict):
-            customer = Customer(**customer)
-        elif not isinstance(customer, Customer):
-            print(customer)
-=======
 
         if isinstance(customer, dict):
             customer = Customer(**customer)
         elif not isinstance(customer, Customer):
->>>>>>> dev-stouraitis
             raise TypeError
         if threaded:
             Thread(target=self.create_customer, args=(customer,)).start()
             return
 
-<<<<<<< HEAD
-=======
         if not self.validate_customer(customer):
             raise ValueError
->>>>>>> dev-stouraitis
         self.session.add(customer)
         self.session.commit()
 
@@ -83,18 +73,6 @@ class CustomerControl:
     def get_customer_by_id(self, id) -> Customer | None:
         return self.session.query(self.customer).filter_by(id=id).first()
 
-<<<<<<< HEAD
-    def validate_customer(self, customer: dict | list) -> bool:
-        test1 = all(key in customer for key in ["name", "surname", "email", "phone"])
-        test2 = len(customer) == 4
-
-        if not (test1 and test2):
-            return False
-        if isinstance(customer, list):
-            return all(customer)
-        if isinstance(customer, dict):
-            return all(customer.values())
-=======
     def validate_customer(self, customer: dict | Customer) -> bool:
         if isinstance(customer, Customer):
             if customer.name:
@@ -106,4 +84,3 @@ class CustomerControl:
             return all(key in customer for key in ["name"]) and customer["name"]
 
         return False
->>>>>>> dev-stouraitis

@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-def logger(message) -> None:
-    print(message)  # placeholder
-=======
 """
 Ένα πολύ απλό πρόγραμμα logging. Προτιμήθηκε μια απλή υλοποίηση
 παρά να κάνουμε χρήση του logger της Python ή κάποιου third party
@@ -91,4 +87,3 @@ class Logger:
 
     def log_error(self, message: str):
         self.log(message, "ERROR")
->>>>>>> dev-stouraitis

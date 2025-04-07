@@ -15,21 +15,6 @@
 # ]
 
 
-<<<<<<< HEAD
-def create_window() -> Window:
-    """
-    Factory function που δημιουργεί και σετάρει την tkinter εφαρμογή
-    """
-    root = Window()
-    Overview(root)
-    Appointments(root)
-    Customers(root)
-    Statistics(root)
-    Alerts(root)
-    root.initialize()
-
-    return root
-=======
 # def create_window() -> Window:
 #     """
 #     Factory function που δημιουργεί και σετάρει την tkinter εφαρμογή
@@ -42,4 +27,3 @@ def create_window() -> Window:
 #     Overview(root).pack(fill="both", expand=True)
 
 #     return root
->>>>>>> dev-stouraitis

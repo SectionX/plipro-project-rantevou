@@ -29,10 +29,7 @@ class Mailer:
             "plipro.hle55.team3@gmail.com", "lpri ryfl pdjr hlef"
         )  # App Password, δεν είναι ο πραγματικός κωδικός.
 
-<<<<<<< HEAD
-=======
     # TODO αλλαγή σε debug=False όταν ολοκληρωθεί και τεσταριστεί το πρόγραμμα
->>>>>>> dev-stouraitis
     def send_email(self, appointments, debug=False) -> None:
         """
         Ασύγχρονο κάλεσμα στην _send_email για να μην κλειδώνει το προγραμμα

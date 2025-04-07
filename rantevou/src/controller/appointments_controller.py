@@ -25,26 +25,6 @@ class AppointmentControl:
         """
         return self.session.query(self.appointment).all()
 
-<<<<<<< HEAD
-    def create_appointment(self, appointment: Appointment) -> None:
-        """
-        Προσθέτει καινούρια εγγραφή στο table Appointments
-        """
-        self.session.add(appointment)
-        self.session.commit()
-
-    def delete_appointment(self, appointment: Appointment) -> None:
-        """
-        Σβήνει μια εγγραφή από το table Appointments
-        """
-        self.session.delete(appointment)
-        self.session.commit()
-
-    def update_appointment(self, appointment: Appointment) -> None:
-        """
-        Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments
-        """
-=======
     def create_appointment(self, appointment: Appointment | dict) -> None:
         """
         Προσθέτει καινούρια εγγραφή στο table Appointments
@@ -72,7 +52,6 @@ class AppointmentControl:
         """
         # TODO Η υλοποίηση είναι ενδεικτική. Θέλουμε να υποστηρίζει
         # Appointment Class και dictionary ως παράμετρο
->>>>>>> dev-stouraitis
         old_appointment = (
             self.session.query(Appointment).filter_by(id=appointment.id).first()
         )
