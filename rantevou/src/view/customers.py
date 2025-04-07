@@ -1,9 +1,15 @@
-"""
-Θέλει πολλά refactors αλλα δουλεύει όπως πρέπει προς το παρών.
-
-Θα πρέπει να προσθεθεί κώδικας που συνδέεται με το Mailer αλλά δεν
-είμαι σίγουρος αν είναι καλύτερα να γίνει εδώ ή σε κάποιο άλλο module.
-"""
+# TODO
+# Θέλει πολλά refactors αλλα δουλεύει όπως πρέπει προς το παρών.
+#
+# Θα πρέπει να προσθεθεί κώδικας που συνδέεται με το Mailer αλλά δεν
+# είμαι σίγουρος αν είναι καλύτερα να γίνει εδώ ή σε κάποιο άλλο module.
+#
+# Αν και δουλεύει σωστά σκοπέυω να το ξαναγράψω ώστε να διαβάζεται πιο εύκολα
+# Ο λόγος που είναι τόσο χαοτικό είναι επειδή ήταν η πρώτη μου απόπειρα με να
+# φτιάξω gui με κάποια πολυπλοκότητα μέσω tkinter. Το αντίστοιχο για τα ραντεβού
+# είναι σαφώς πολύ πιο οργανωμένο, και θα προσπαθήσω να μιμηθώ εδώ ότι έκανα εκεί
+# όσο αφορά το object oriented κομμάτι.
+# - Στουραϊτης
 
 import tkinter as tk
 from tkinter import ttk
@@ -16,22 +22,22 @@ from ..controller.customers_controller import CustomerControl
 
 
 class Customers(AppFrame):
-    def __init__(self, root, name="customers"):
-        super().__init__(root, name)
+    def __init__(self, root):
+        super().__init__(root)
 
         # Σύνδεση με την βάση μέσω του controller.
         self.controller = CustomerControl()
         self.customers = self.controller.get_customers()
 
         # Δημιουργία των βασικών widget
-        self.searchbar = tk.Entry(self.body, width=30)
+        self.searchbar = tk.Entry(self, width=30)
         self.searchbar.focus()
-        self.tree = ttk.Treeview(self.body)
+        self.tree = ttk.Treeview(self)
 
         self.searchbar.pack()
         self.tree.pack(fill="both", expand=True)
 
-        self.button_bar = tk.Frame(self.body)
+        self.button_bar = tk.Frame(self)
         self.button_bar.pack()
 
         self.add_button = tk.Button(
@@ -51,7 +57,6 @@ class Customers(AppFrame):
         self.add_button.pack(side=tk.LEFT)
         self.delete_button.pack(side=tk.LEFT)
         self.edit_button.pack(side=tk.LEFT)
-        self.initialize()
         self.initialize_tree()
 
         # Δεν είμαι σίγουρος πιο widget παίρνει τον έλεγχο μετά την καταστροφή
@@ -59,7 +64,7 @@ class Customers(AppFrame):
         # σε δεύτερο χρόνο.
         self.bind("<Key>", self.search)
         self.searchbar.bind("<KeyRelease>", lambda _: self.search())
-        self.body.bind("<Key>", self.search)
+        self.bind("<Key>", self.search)
         self.tree.bind("<Key>", self.search)
         self.tree.bind("<ButtonRelease-1>", self._tree_click_handler)
         self.tree.bind("<Button-1>", self.tree_identify)
@@ -238,7 +243,7 @@ class Customers(AppFrame):
         πελατών. Έχει ελαφρώς διαφορετική συμπεριφορά ανάλογα ποιος
         το καλέι (create_customer, update_customer)
         """
-        self.popup = tk.Toplevel(self.body)
+        self.popup = tk.Toplevel(self)
         name_entry = tk.Entry(self.popup, name="name")
         surname_entry = tk.Entry(self.popup, name="surname")
         phone_entry = tk.Entry(self.popup, name="phone")
