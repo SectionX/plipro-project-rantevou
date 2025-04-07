@@ -1,5 +1,21 @@
+<<<<<<< HEAD
 from .src.view import create_window
 from .src.model.session import initialize_db
+=======
+from .src.model.session import initialize_db, reset_initialize_fake_db, reset_db
+from .src.controller.logging import Logger
+from .src.view.window import Window
+from sys import argv, exit
+
+if len(argv) > 1:
+    if argv[1] == "reset":
+        reset_db()
+    elif argv[1] == "reset-fake":
+        reset_initialize_fake_db()
+    else:
+        raise Exception("Unknown argument")
+    exit(0)
+>>>>>>> dev-stouraitis
 
 
 def main():
@@ -19,11 +35,21 @@ def main():
     στον κώδικα και να τρέχετε το πρόγραμμα. Χωρίς αυτό θα πρέπει να κάνετε
     reinstall κάθε φορά που κάνετε αλλαγές.
     """
+<<<<<<< HEAD
 
     initialize_db()
     root = create_window()
     root.change_frame("customers")
     root.run()
+=======
+    Logger.level = 1
+    logger = Logger("main")
+    logger.log_info("Starting Rantevou")
+
+    initialize_db()
+    root = Window()
+    root.mainloop()
+>>>>>>> dev-stouraitis
 
 
 if __name__ == "__main__":

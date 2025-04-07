@@ -1,3 +1,5 @@
+# TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
+
 import pathlib
 import smtplib
 from threading import Thread
@@ -6,8 +8,11 @@ from email.mime.text import MIMEText
 from ..model.session import SessionLocal
 from ..model.customer import Customer
 from ..model.appointment import Appointment
+from .logging import Logger
 
 PATH_TO_EMAIL = pathlib.Path(__file__).parent.parent.parent / "data" / "email_body.txt"
+
+logger = Logger()
 
 
 class Mailer:
@@ -22,8 +27,12 @@ class Mailer:
         self.server.starttls()
         self.server.login(
             "plipro.hle55.team3@gmail.com", "lpri ryfl pdjr hlef"
-        )  # App Password
+        )  # App Password, δεν είναι ο πραγματικός κωδικός.
 
+<<<<<<< HEAD
+=======
+    # TODO αλλαγή σε debug=False όταν ολοκληρωθεί και τεσταριστεί το πρόγραμμα
+>>>>>>> dev-stouraitis
     def send_email(self, appointments, debug=False) -> None:
         """
         Ασύγχρονο κάλεσμα στην _send_email για να μην κλειδώνει το προγραμμα
@@ -50,17 +59,21 @@ class Mailer:
                 .all()
             )
 
+        # TODO πρέπει να γίνει σωστό format του appointment.date
+        # TODO επίσης πρέπει να γραφτεί καλύτερο μήνυμα email
+        customer: Customer
+        appointment: Appointment
         for customer, appointment in result:
             email = MIMEText(body.format(customer.name, appointment.date))
             email["from"] = "plipro.hle55.team3@gmail.com"
-            email["to"] = "underburningsky@gmail.com"
+            email["to"] = customer.email
             email["subject"] = "Φιλική Υπενθύμηση"
             if debug:
-                print(body.format(customer.name, appointment.date))
+                logger.log_debug(body.format(customer.name, appointment.date))
             else:
                 self.server.sendmail(
                     "plipro.hle55.team3@gmail.com",
-                    "underburningsky@gmail.com",
+                    customer.email,
                     email.as_string(),
                 )
 

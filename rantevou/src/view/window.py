@@ -10,7 +10,11 @@
 """
 
 import tkinter as tk
-from collections import OrderedDict
+from tkinter import ttk
+from .appointments import Appointments
+from .customers import Customers
+from .statistics import Statistics
+from .alerts import Alerts
 
 
 class Window(tk.Tk):
@@ -19,28 +23,9 @@ class Window(tk.Tk):
         super().__init__()
         self.geometry(f"{width}x{height}")
         self.title(title)
-        self.AppContext = {}
-
-    def initialize(self) -> None:
-        """
-        Συνδέει τα appframes στο overview το ορίζει ως αρχικό panel
-        """
-        self.children["!overview"].initialize()  # type: ignore
-        self.windowframe = self.children["!overview"]
-        self.windowframe.pack(fill="both", expand=True)
-
-    def change_frame(self, frame_name) -> None:
-        """
-        Αλλάζει το ενεργό frame στο παράθυρο. Χρησιμοποείται από το widget
-        GoToButton στο views/navigation.py
-        """
-        self.windowframe.forget()
-        self.windowframe = self.children[f"!{frame_name}"]
-        self.windowframe.pack(fill="both", expand=True)
-
-    def run(self) -> None:
-        """
-        Εκκίνηση της tkinter εφαρμογής. Δημιουργεί την γραφική
-        επιφάνεια και την αποδευσμέυει όταν τελειώσει.
-        """
-        self.mainloop()
+        self.tabs = ttk.Notebook(self)
+        self.tabs.pack(fill="both", expand=True)
+        self.tabs.add(Appointments(self.tabs), text="Appointments")
+        self.tabs.add(Customers(self.tabs), text="Customers")
+        self.tabs.add(Statistics(self.tabs), text="Statistics")
+        self.tabs.add(Alerts(self.tabs), text="Alerts")
