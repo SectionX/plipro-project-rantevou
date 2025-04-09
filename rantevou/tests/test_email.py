@@ -1,13 +1,9 @@
-from ..src.controller.mailer import Mailer
-from ..src.model.customer import Customer
-from ..src.model.appointment import Appointment
-from datetime import datetime
+from rantevou.src.controller.mailer import Mailer
+from rantevou.src.controller.appointments_controller import AppointmentControl
 
 
-# def test_email():
-#     session = initialize_db()
-#     with TestSession() as session:
-#         appointments = session.query(Appointment).all()
-
-#     mailer = Mailer()
-#     mailer.send_email(appointments, debug=True)
+def test_mailer_works():
+    mlr = Mailer()
+    ac = AppointmentControl()
+    aps = ac.get_appointments()
+    mlr._send_email(aps, debug=True)

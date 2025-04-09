@@ -12,7 +12,7 @@ from .logging import Logger
 
 PATH_TO_EMAIL = pathlib.Path(__file__).parent.parent.parent / "data" / "email_body.txt"
 
-logger = Logger()
+logger = Logger("Mailer")
 
 
 class Mailer:
@@ -23,6 +23,7 @@ class Mailer:
         δεν θα χρησιμοποιηθεί για κάτι άλλο. Δίνω 10 ευρώ σε όποιον
         τα κλέψει!
         """
+        logger.log_info("Connecting to smtp")
         self.server = smtplib.SMTP("smtp.gmail.com", 587)
         self.server.starttls()
         self.server.login(
@@ -35,38 +36,40 @@ class Mailer:
         Ασύγχρονο κάλεσμα στην _send_email για να μην κλειδώνει το προγραμμα
         περιμένοντας την ανταπόκριση δικτύου.
         """
-        Thread(target=self._send_email, args=(appointments, debug)).start()
+        logger.log_info(f"Sending emails to {len(appointments)} recipients")
+        Thread(target=self._send_email, args=(appointments, debug), daemon=True).start()
+        import time
 
-    def _send_email(self, appointments, debug=False):
+        time.sleep(5)
+
+    def _send_email(self, appointments: list[Appointment], debug=False):
         """
         Βρίσκει τους πελάτες που αντιστοιχούν στα ραντεβού και τους
         στέλνει email
         """
+        print(appointments)
+        if debug:
+            logger.log_info("Debug mode enabled, emails won't reach the recipient")
         self.start_server()
-        ids = (appointment.customer_id for appointment in appointments)
-
         with PATH_TO_EMAIL.open() as f:
             body = f.read()
 
-        with SessionLocal() as session:
-            result = (
-                session.query(Customer, Appointment)
-                .join(Appointment)
-                .filter(Customer.id.in_(ids))
-                .all()
-            )
-
         # TODO πρέπει να γίνει σωστό format του appointment.date
         # TODO επίσης πρέπει να γραφτεί καλύτερο μήνυμα email
-        customer: Customer
-        appointment: Appointment
-        for customer, appointment in result:
-            email = MIMEText(body.format(customer.name, appointment.date))
+        for appointment in appointments:
+            customer = appointment.get_customer()
+            if customer is None:
+                continue
+            date = appointment.date.strftime("%d/%m και ώρα %H:%M")
+            logger.log_info(f"Mailing to {customer.email}")
+
+            email = MIMEText(body.format(customer.name, date))
             email["from"] = "plipro.hle55.team3@gmail.com"
             email["to"] = customer.email
             email["subject"] = "Φιλική Υπενθύμηση"
+
             if debug:
-                logger.log_debug(body.format(customer.name, appointment.date))
+                logger.log_info(body.format(customer.name, date))
             else:
                 self.server.sendmail(
                     "plipro.hle55.team3@gmail.com",

@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .session import Base
+from . import appointment
 
 
 class Customer(Base):
@@ -11,6 +12,12 @@ class Customer(Base):
     email: Mapped[str] = mapped_column(unique=True, nullable=True)
     phone: Mapped[str] = mapped_column(unique=True, nullable=True)
 
+    appointments = relationship(
+        "Appointment",
+        back_populates="customer",
+        foreign_keys="[Appointment.customer_id]",
+    )
+
     def __str__(self) -> str:
         return (
             f"Customer(id={self.id}, name={self.name}, "
@@ -20,3 +27,6 @@ class Customer(Base):
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def get_appointments(self) -> list[appointment.Appointment]:
+        return self.appointments

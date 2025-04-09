@@ -1,225 +1,487 @@
-"""
-appointments.py - Γραφικό περιβάλλον εμφάνισης, δημιουργίας και επεξεργασίας
-                  των ραντεβού
+from __future__ import annotations
 
-Class Appointments - Το App Frame που εμπεριέχει όλη την λογική του γραφικού
-                     περιβάλλοντος
-
-Class AppointmentGroup - Για την καλύτερη εμφάνιση των στοιχείων, χωρίζουμε το
-                         ωράριο λειτουργίας σε υποπεριόδους. Εμφανίζονται στον
-                         χρήστη ώς ένα grid κουμπιών και το χρώμα τους υποδηλώνει
-                         την πληρότητα της περιόδου σε ραντεβού
-
-Class Appointment - Το widget που εμπεριέχει τα στοιχεία του ραντεβού,
-"""
-
-from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk
+from tkinter.messagebox import showerror
+from datetime import datetime, timedelta
+from datetime import timedelta as td
+from typing import Any
 from .abstract_views import AppFrame
-from ..model.types import Appointment, Customer
-from ..controller.appointments_controller import AppointmentControl
-from ..controller.customers_controller import CustomerControl
+from ..controller.appointments_controller import AppointmentControl as AC
+from ..controller.customers_controller import CustomerControl as CC
+from ..controller.logging import Logger
+from ..controller.mailer import Mailer
+from ..controller import get_config
+from ..model.types import Customer, Appointment
 
-# for simulation purposes
-import random
-
-WEEK_DAYS = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-]
-
-# TODO αυτά τα στοιχεία μπήκαν εδώ για διευκόλυνση της υλοποίησης αλλά θα
-# πρέπει να σβηστούν και να μεταφερθούν στον controller. Επίσης θα πρέπει να
-# διαβάζονται από ενα configuration file και να μην είναι σαν σταθερές στον
-# κώδικα. Διορθώνοντας την λογική θα πρέπει να διορθωθούν και όλα τα class/methods
-# που τα χρησιμοποιούν.
-WORKING_HOURS = 8
-OFFSET = 9
-APPOINTMENT_LENGTH = 20
+logger = Logger("Appointments")
+ac = AC()
+cc = CC()
+mailer = Mailer()
+module_state: dict[str, Any] = {}
+cfg = get_config()
+cfg["minutes_in_period"] = cfg["working_hours"] // cfg["rows"] * 60
 
 
-class AppointmentButton:
-    """
-    Superclass για όλα τα widgets του appointment App Frame. Κάθε
-    ένα subclass θα πρέπει να υλοποιεί την συνάρτηση update_info και
-    να ενημερώνει τα στοιχεία του με τα δεδομένα που βρίσκει στις μεταβλητές
-
-    AppointmentButton.appointment_data
-    AppointmentButton.customer_data
-    """
-
-    appointment_data: list[Appointment] = []
-    customer_data: list[Customer] = []
-    appointment_control = AppointmentControl()
-    customer_control = CustomerControl()
-
-    @classmethod
-    def get_data_from_db(cls):
-        """
-        Σκοπός της μεθόδου είναι να επικοινωνήσει με τον controller
-        και να λάβει στοιχεία από την βάση δεδομένων, αποθηκεύοντας
-        τα ως Class Attribute. Αυτό ειναι σημαντικό, γιατί τα Class
-        Attributes είναι κοινά σε όλα τα αντικείμενα που κληρονομούν
-        από αυτό το Class
-        """
-        cls.appointment_data = cls.appointment_control.get_appointments()
-        cls.customer_data = cls.customer_control.get_customers()
-
-    def update_info(self):
-        """
-        Σκοπός της μεθόδου είναι να λαμβάνει τις απαραίτητες πληροφορίες
-        απο την βάση δεδομένων και να αλλάζει τα χαρακτηριστικά της ανάλογα.
-        """
+def fetch_customers():
+    return cc.get_customers()
 
 
-class AppointmentGroup(tk.Button, AppointmentButton):
+def fetch_customer_by_property(**kwargs):
+    return cc.get_customer_by_properties(**kwargs)
 
-    # 5 levels from green to red
-    color_grading = ["#FFFFFF", "#00FF00", "#00FF7F", "#FFFF00", "#FF7F00", "#FF0000"]
 
-    def __init__(
-        self, master, zero_day, day, hours, minutes, period_length, *args, **kwargs
-    ):
-        tk.Button.__init__(self, master, *args, **kwargs)
-        self.appointment_control = AppointmentControl()
-        self.config(bg="#f0f0f0", fg="#000000", activebackground="#f0f0f0")
+def add_appointment(**kwargs) -> bool:
+    try:
+        ac.create_appointment(Appointment(**kwargs))
+        return True
+    except Exception as e:
+        logger.log_warn(str(e))
+        return False
 
-        self.zero_day: datetime = zero_day
-        self.period_start: datetime = self.zero_day + timedelta(
-            days=day, hours=hours, minutes=minutes
+
+def update_appointment(**kwargs) -> bool:
+    try:
+        ac.update_appointment(Appointment(**kwargs))
+        return True
+    except Exception as e:
+        logger.log_warn(str(e))
+        return False
+
+
+def delete_appointment(**kwargs) -> bool:
+    try:
+        ac.delete_appointment(**kwargs)
+        return True
+    except Exception as e:
+        logger.log_warn(str(e))
+        return False
+
+
+def add_customer(**kwargs) -> bool:
+    try:
+        cc.create_customer(Customer(**kwargs))
+        return True
+    except Exception as e:
+        logger.log_warn(str(e))
+        return False
+
+
+def fetch_appointments():
+    appointments = ac.get_appointments()
+    appointments.sort(key=lambda x: x.date)
+    return appointments
+
+
+def fetch_appointmets_by_id(id):
+    return ac.get_appointment_by_id(id)
+
+
+def send_mail(*appointments):
+    mailer.send_email(*appointments)
+
+
+def dict_to_customer(dict):
+    return Customer(**dict)
+
+
+def dict_to_appointment(dict):
+    return Appointment(**dict)
+
+
+def get_appointment_tab(node):
+    return node.nametowidget(".!notebook.!appointments")
+
+
+class GridElement:
+
+    def update(self):
+        pass
+
+    def move_to_the_left(self):
+        pass
+
+    def move_to_the_right(self):
+        pass
+
+
+class AppointmentElement:
+
+    def update(self):
+        pass
+
+
+class ColumnLabel(ttk.Label, GridElement):
+
+    def __init__(self, master, date, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.date = date
+        self.update()
+
+    def update(self):
+        self["text"] = self.date.strftime("%d/%m")
+
+    def move_to_the_left(self):
+        self.date += timedelta(days=-1)
+        self["text"] = self.date.strftime("%d/%m")
+
+    def move_to_the_right(self):
+        self.date += timedelta(days=1)
+        self["text"] = self.date.strftime("%d/%m")
+
+
+class AppointmentGroup(ttk.Frame, GridElement, AppointmentElement):
+
+    def __init__(self, root, group_id, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+
+        self.wname = "bgrid"
+        self.root = root
+        self.group_id = group_id
+        self.view = SidePanelAppointmentViewer(self.top.bodyframe, self.group_id)
+        self.text = tk.Label(self)
+        self.text.pack(fill="both", expand=True)
+
+        self.change_text()
+        self.text.bind("<1>", self.show_in_side_panel)
+
+    @property
+    def top(self) -> Appointments:
+        return get_appointment_tab(self)
+
+    @property
+    def start_date(self):
+        self.top.get_date_from_group(self.group_id)
+
+    @property
+    def appointments(self):
+        return Appointments.appointment_groups[self.group_id]
+
+    @property
+    def name(self):
+        return f"{self.wname}-{self.group_id}"
+
+    def change_text(self):
+        self.text["text"] = f"{self.name}'\n'{len(self.appointments)}"
+
+    def update(self, *event):
+        try:
+            self.change_text()
+        except:
+            self.text["text"] = f"{self.name}"
+
+    def move_to_the_left(self, *args):
+        self.group_id -= cfg["rows"]
+        self.update()
+
+    def move_to_the_right(self, *args):
+        self.group_id -= cfg["rows"]
+        self.update()
+
+    def show_in_side_panel(self, *events):
+        self.top.change_side_view(self.view)
+
+
+class SidePanelElement:
+    pass
+
+
+class AddAppointment(ttk.Button, SidePanelElement):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class SingleAppointment(ttk.Frame, SidePanelElement, AppointmentElement):
+
+    customer: Customer
+    customer_date: str
+    customer_is_alerted: str
+    date: datetime
+    add_button: ttk.Widget
+
+    def __init__(self, root, appointment: Appointment | None, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.appointment = appointment
+        if self.appointment:
+            ttk.Button(self, text=str(appointment.date)).pack(side=tk.TOP, fill="x")
+        else:
+            ttk.Button(self, text="+").pack(side=tk.TOP, fill="x")
+
+    def update(self):
+        pass
+
+
+class SidePanelViewer(ttk.Frame):
+    pass
+
+
+class SidePanelAppointmentViewer(SidePanelViewer):
+
+    active_group: int
+    appointment_container: ttk.Frame
+    appointment_widgets: list[ttk.Widget]
+    header: ttk.Label
+    footer: ttk.Button
+
+    def __init__(self, master, group_no: int, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.group_no = group_no
+        self.initialize()
+        self.update()
+
+    def initialize(self):
+        self.appointment_widgets = []
+        self.header = ttk.Label(self, text="Ραντεβου")
+        self.footer = ttk.Button(
+            self, text="Back", command=lambda: self.top.change_side_view(None)
         )
-        self.period_end: datetime = self.period_start + timedelta(minutes=period_length)
+        for appointment in self.appointments:
+            self.appointment_widgets.append(SingleAppointment(self, appointment))
+        if len(self.appointment_widgets) < 6:
+            self.appointment_widgets.append(SingleAppointment(self, None))
 
-        self.time_str = (
-            f"{self.period_start.strftime('%H:%M')}-{self.period_end.strftime('%H:%M')}"
-        )
-        self["text"] = f"{self.time_str}"
+    def update(self):
+        self.header.forget()
+        self.footer.forget()
+        self.header.pack(side=tk.TOP, fill="x")
+        for widget in self.appointment_widgets:
+            widget.forget()
+        for widget in self.appointment_widgets:
+            widget.pack(side=tk.TOP, fill="both")
+        self.footer.pack(side=tk.BOTTOM, fill="x")
 
-        self.capacity = 6  # TODO make it dynamic
+    @property
+    def top(self) -> Appointments:
+        return get_appointment_tab(self)
 
-    def update_info(self):
-        print("updating")
-        appointments = random.randint(0, (2 * 60) // 20)
-        self.config(bg=self.color_grading[appointments - 1])
-        self.config(text=f"{appointments}/{self.capacity}\n" + self["text"])
+    @property
+    def start_date(self) -> datetime:
+        return self.top.get_date_from_group(self.group_no)
+
+    @property
+    def appointments(self) -> list[Appointment]:
+        return self.top.appointment_groups[self.group_no]
 
 
-class SingleAppointment(tk.Button, AppointmentButton):
-    def __init__(self, master, *args, **kwargs):
-        tk.Button.__init__(self, master, *args, **kwargs)
-        self.appointment_control = AppointmentControl()
-        self.customer_control = CustomerControl()
-        self.config(bg="#f0f0f0", fg="#000000", activebackground="#f0f0f0")
-        self.config(command=self.show_customer_data)
+class AppointmentFrame(ttk.Frame, SidePanelElement):
 
-    def update_info(self):
-        """
-        Η συνάρτηση θα τρέχει την στιγμή δημιουργίας του widget και
-        θα προσθέτει στο self["text"] σε μορφή
-
-        *Όνομα Πελάτη* - *ωρα σε ΩΩ/ΛΛ*
-
-        Να παίρνει στοιχεία από το Appointment.appointment_data και
-        Appointment.customer_data
-        """
-        # TODO
-
-    def show_customer_data(self):
-        """
-        Συνάρτηση που θα δημιουργεί ένα pop up με τα στοιχεία
-        του πελάτη που σχετίζεται με το ραντεβού
-
-        Όνομα, Επίθετο, Τηλέφωνο, Email και ένα κουμπί
-        που αν πατηθεί στέλνει email.
-
-        Να παίρνει στοιχεία από τις πληροφορίες που διαβάζει η
-        update_info
-        """
-        popup = tk.Toplevel(self)
-        # TODO
-        popup.mainloop()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class Appointments(AppFrame):
-    def __init__(self, root):
-        super().__init__(root)
-        self.zero_day = datetime.now().replace(
-            hour=0, minute=0, second=0, microsecond=0
+
+    appointments: list[Appointment]
+    cfg: dict[str, int]
+    start_date: datetime
+    end_date: datetime
+    time_format: str = "%H:%M"
+    appointment_groups: dict[int, list[Appointment]] = {}
+    appointment_group_index: int = 0
+    grid_buttons: list[ttk.Widget] = []
+    button_grid: ttk.Frame
+    side_panel: ttk.Frame
+
+    def __init__(self, root, *args, name="appointments", **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.name = name
+        self.appointments = fetch_appointments()
+
+        self.cfg = cfg
+        self.cfg["working_minutes"] = self.cfg["working_hours"] * 60
+        self.cfg["periods_per_day"] = self.cfg["working_hours"] // self.cfg["rows"]
+        self.cfg["period_duration_in_hours"] = (
+            self.cfg["working_hours"] // self.cfg["rows"]
         )
 
-        self.initialize_columns()
-
-    def update_info(self):
-        """
-        H συνάρτηση ζητάει από όλα τα παιδιά της να ενημερώσουν
-        τα στοιχεία τους τρέχοντας την δική τους μέθοδο update_info()
-
-        Η find_children είναι ήδη υλοποιημένη στο AppFrame Class
-        """
-        children = self.get_all_children(self)
-        for child in children:
-            child.update_info()
-
-    def initialize_one_header(self, day):
-        self.day_header = tk.Label(
-            self.appointment_slots_column, text=WEEK_DAYS[day % 7]
+        self.max_button_count = int(
+            self.cfg["columns"]
+            * self.cfg["working_hours"]
+            // self.cfg["minimum_appointment_duration"]
         )
-        self.pack(side=tk.TOP, fill="both", expand=True)
-        self.date_header = tk.Label(
-            self.appointment_slots_column,
-            height=2,
-            text=self.zero_day.strftime("%d/%m"),
-        )
-        self.date_header.pack(side=tk.TOP, fill="both", expand=True)
 
-    def initialize_one_appointmentgroup(
-        self, zero_day, day, hours, minutes, period_length
-    ):
-        period_widget = AppointmentGroup(
-            self.appointment_slots_column,
-            zero_day,
-            day,
-            hours,
-            minutes,
-            period_length,
-            command=lambda: self.create_appointment_group_popup("group"),
+        self.start_date = datetime.now().replace(
+            hour=self.cfg["opening_hour"],
+            minute=0,
+            second=0,
+            microsecond=0,
         )
-        period_widget.pack(side=tk.TOP, fill="both", expand=True)
 
-    def initialize_one_appointmentgroup_column(self, day_index):
-        self.initialize_one_header(day_index)
-        for i in range(0, self.working_minutes, self.period):
-            self.initialize_one_appointmentgroup(
-                self.zero_day,
-                day_index,
-                hours=i // 60 + OFFSET,
-                minutes=i % 60,
-                period_length=self.period,
+        self.end_date = self.start_date + timedelta(
+            days=self.cfg["columns"],
+            hours=self.cfg["working_hours"],
+        )
+
+        self.group_period = timedelta(
+            hours=self.cfg["working_hours"] // self.cfg["rows"]
+        )
+        self.split_appointments_to_groups()
+
+        self.side_panel = ttk.Frame(self, name="side_panel")
+        self.side_panel.pack(side=tk.RIGHT, fill="y", padx=10, pady=10)
+        self.button_grid = ttk.Frame(self, name="button_grid")
+        self.button_grid.pack(side=tk.LEFT, fill="both", expand=True, padx=10, pady=10)
+        self.navigation_bar = ttk.Frame(self.button_grid, name="navbar")
+        self.navigation_bar.pack(side=tk.TOP, fill=("x"))
+
+        self.initialize_side_panel()
+        self.initialize_grid()
+        self.initialize_navbar()
+
+    ### ---------   NAVBAR    --------- ###
+
+    def initialize_navbar(self):
+        def previous_day():
+            children: list[AppointmentGroup] = self.get_all_children(
+                self, filter=lambda x: isinstance(x, GridElement)
             )
+            for child in children:
+                child.move_to_the_left()
 
-    def initialize_columns(self):
-        self.working_minutes = WORKING_HOURS * 60
-        self.period = self.working_minutes // 4
+        def next_day():
+            children: list[AppointmentGroup] = self.get_all_children(
+                self, filter=lambda x: isinstance(x, GridElement)
+            )
+            for child in children:
+                child.move_to_the_right()
 
-        for day_index, day_name in enumerate(WEEK_DAYS):
-            self.appointment_slots_column = tk.Frame(self)
-            self.appointment_slots_column.pack(side=tk.LEFT, fill="both", expand=True)
-            self.initialize_one_appointmentgroup_column(day_index)
+        previous = ttk.Button(
+            self.navigation_bar, text="previous", command=previous_day
+        )
+        next = ttk.Button(self.navigation_bar, text="next", command=next_day)
+        next.pack(side=tk.RIGHT)
+        previous.pack(side=tk.RIGHT)
 
-    def create_appointment_group_popup(self, appointment_group):
-        AppointmentButton.get_data_from_db()
-        group = tk.Toplevel()
-        group.geometry("250x400")
-        group.title("Appointments")
-        for i in range(self.period // APPOINTMENT_LENGTH):
-            appointment = SingleAppointment(group)
-            appointment.update_info()
-            appointment.pack(side=tk.TOP, fill="both", expand=True)
+    ### --------- BUTTON GRID --------- ###
 
-        group.mainloop()
+    def initialize_grid(self):
+        for col in range(self.cfg["columns"]):
+            container = ttk.Frame(self.button_grid)
+            container.pack(side=tk.LEFT, fill="both", expand=True)
+            label = ColumnLabel(
+                container,
+                date=self.start_date + td(days=col),
+            )
+            label.pack(fill="x")
+            for row in range(self.cfg["rows"]):
+                element = AppointmentGroup(container, col * cfg["rows"] + row)
+                self.grid_buttons.append(element)
+                element.pack(fill="both", expand=True)
+
+    ### --------- SIDE PANEL MAIN --------- ###
+
+    def initialize_side_panel(self):
+
+        search_container = tk.Frame(self.side_panel, width=self.side_panel["width"])
+        search_container.pack(side=tk.BOTTOM)
+
+        self.search_button = ttk.Button(
+            search_container,
+            text="Εύρεση κενού χρόνου",
+            name="search_button",
+            command=self.find_free_appointment,
+            width=search_container["width"] // 7,
+        )
+        self.search_button.pack(side=tk.BOTTOM, fill="x")
+
+        entry_frame = ttk.Frame(search_container)
+        entry_frame.pack(side=tk.BOTTOM, fill="x")
+
+        self.search_entry = ttk.Entry(entry_frame)
+        self.search_entry.pack(side=tk.RIGHT, fill="x")
+
+        self.search_label = ttk.Label(entry_frame, text="Διάρκεια: ")
+        self.search_label.pack(side=tk.LEFT, fill="x")
+
+        self.bodyframe = tk.Frame(self.side_panel)
+        self.bodyframe.pack(fill="both", expand=True)
+        self.initial_child: SidePanelViewer = SidePanelViewer(self.bodyframe)
+        self.bodyframe_child: SidePanelViewer | None = None
+
+    def change_side_view(self, frame: SidePanelViewer | None = None):
+        if frame is None:
+            frame = self.initial_child
+        if self.bodyframe_child:
+            self.bodyframe_child.forget()
+        self.bodyframe_child = frame
+        self.bodyframe_child.pack(fill="both", expand=True)
+        self.bodyframe_child.update()
+
+    @property
+    def time_between_appointments(self):
+        return ac.get_free_periods()
+
+    def find_free_appointment(self):
+        target: timedelta | None = None
+        try:
+            input = int(self.search_entry.get())
+            target = td(minutes=int(input))
+        except:
+            showerror("Error", "Η αναζήτηση πρέπει να είναι αριθμός")
+            return
+
+        for appointment, delta in self.time_between_appointments:
+            if target <= delta:
+                print(appointment.end_date)
+
+    ### --------- SIDE PANEL APPOINTMENT GROUP --------- ###
+
+    ### ---------HELPER FUNCTIONS--------- ###
+
+    def get_appointment_from_date(self, date: datetime):
+        apt_length = self.cfg["minimum_appointment_duration"]  # minutes
+
+        day_delta = date.day - self.start_date.day
+        hour_delta = date.hour - self.start_date.hour
+        minute_delta = date.minute - self.start_date.minute
+
+        # turn everything to minutes
+        hour_delta = hour_delta * 60
+        day_delta = day_delta * self.cfg["working_minutes"]
+        total_minute_offset = minute_delta + hour_delta + day_delta
+
+        total_appointment_offset = total_minute_offset // apt_length
+        return total_appointment_offset
+
+    def get_group_from_date(self, date: datetime):
+        apt_length = self.cfg["minimum_appointment_duration"]  # minutes
+        apt_per_hour = 60 // apt_length
+        apt_per_group = apt_per_hour * self.cfg["working_hours"] // self.cfg["rows"]
+
+        total_appointment_offset = self.get_appointment_from_date(date)
+        total_group_offset = total_appointment_offset // apt_per_group
+
+        return total_group_offset
+
+    def get_date_from_group(self, group_no: int):
+        rows = self.cfg["rows"]
+        hours_per_row = self.cfg["working_hours"] // self.cfg["rows"]
+
+        days = group_no // rows
+        hours = (group_no % rows) * hours_per_row
+
+        return self.start_date + timedelta(days=days, hours=hours)
+
+    def split_appointments_to_groups(self):
+
+        groups = ac.get_appointments_grouped_in_periods(
+            start=self.start_date,
+            period=td(hours=self.cfg["period_duration_in_hours"]),
+        )
+        flag = 0
+        order = 0
+        for i, group in enumerate(groups, 1):
+            if flag == 0:
+                self.appointment_groups[order] = list(group.appointments)
+                order += 1
+                if i % self.cfg["rows"] == 0:
+                    flag = 1
+                continue
+            if flag == 1:
+                if i % (24 // self.cfg["periods_per_day"]) == 0:
+                    flag = 0
+
+        while order < self.cfg["columns"] * self.cfg["rows"]:
+            self.appointment_groups[order] = []
+            order += 1

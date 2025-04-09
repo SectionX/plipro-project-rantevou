@@ -30,25 +30,25 @@ class Customers(AppFrame):
         self.customers = self.controller.get_customers()
 
         # Δημιουργία των βασικών widget
-        self.searchbar = tk.Entry(self, width=30)
+        self.searchbar = ttk.Entry(self, width=30)
         self.searchbar.focus()
         self.tree = ttk.Treeview(self)
 
         self.searchbar.pack()
         self.tree.pack(fill="both", expand=True)
 
-        self.button_bar = tk.Frame(self)
+        self.button_bar = ttk.Frame(self)
         self.button_bar.pack()
 
-        self.add_button = tk.Button(
+        self.add_button = ttk.Button(
             self.button_bar, text="Add Customer", command=self.create_customer
         )
 
-        self.delete_button = tk.Button(
+        self.delete_button = ttk.Button(
             self.button_bar, text="Delete Customer", command=self.delete_customer
         )
 
-        self.edit_button = tk.Button(
+        self.edit_button = ttk.Button(
             self.button_bar,
             text="Edit Customer",
             command=lambda: self.update_customer(initialize=True),
@@ -244,15 +244,15 @@ class Customers(AppFrame):
         το καλέι (create_customer, update_customer)
         """
         self.popup = tk.Toplevel(self)
-        name_entry = tk.Entry(self.popup, name="name")
-        surname_entry = tk.Entry(self.popup, name="surname")
-        phone_entry = tk.Entry(self.popup, name="phone")
-        email_entry = tk.Entry(self.popup, name="email")
+        name_entry = ttk.Entry(self.popup, name="name")
+        surname_entry = ttk.Entry(self.popup, name="surname")
+        phone_entry = ttk.Entry(self.popup, name="phone")
+        email_entry = ttk.Entry(self.popup, name="email")
 
         self.popup.title("Add Customer")
         self.popup.geometry("250x400")
 
-        # Η prefill απλά βάζει γεμίζει τα tk.Entry widgets με κάποια
+        # Η prefill απλά βάζει γεμίζει τα ttk.Entry widgets με κάποια
         # default πληροφορία που την ορίζει η καλλούσα
         name_entry.insert(0, prefill.get("name") or "Enter name...")
         surname_entry.insert(0, prefill.get("surname") or "Enter surname...")
@@ -265,7 +265,7 @@ class Customers(AppFrame):
         else:
             callback = self.create_customer
         email_entry.bind("<Return>", lambda _: callback(initialize=False))
-        button = tk.Button(
+        button = ttk.Button(
             self.popup,
             text="Add",
             command=lambda: callback(initialize=False),
@@ -289,9 +289,9 @@ class Customers(AppFrame):
         if initialize:
             self.open_customer_pop_up(prefill)
 
-        # Παίρνουμε τα δεδομένα από τα tk.Entries του popup.
+        # Παίρνουμε τα δεδομένα από τα ttk.Entries του popup.
         children = self.popup.winfo_children()
-        entries = filter(lambda x: isinstance(x, tk.Entry), children)
+        entries = filter(lambda x: isinstance(x, ttk.Entry), children)
 
         customer = {}
         for entry in entries:
@@ -340,8 +340,8 @@ class Customers(AppFrame):
             self.open_customer_pop_up(prefill, edit_mode=True)
 
         # Ίδια διαδικασία με create.
-        entries: Iterator[tk.Entry] = filter(
-            lambda x: isinstance(x, tk.Entry), self.popup.winfo_children()  # type: ignore
+        entries: Iterator[ttk.Entry] = filter(
+            lambda x: isinstance(x, ttk.Entry), self.popup.winfo_children()  # type: ignore
         )
 
         customer = {}

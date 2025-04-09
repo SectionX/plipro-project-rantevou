@@ -73,6 +73,9 @@ class CustomerControl:
     def get_customer_by_id(self, id) -> Customer | None:
         return self.session.query(self.customer).filter_by(id=id).first()
 
+    def get_customer_by_properties(self, **kwargs) -> Customer | None:
+        return self.session.query(self.customer).filter_by(**kwargs).first()
+
     def validate_customer(self, customer: dict | Customer) -> bool:
         if isinstance(customer, Customer):
             if customer.name:

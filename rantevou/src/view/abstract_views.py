@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 
 
 class PopUp(tk.Toplevel):
@@ -7,32 +8,28 @@ class PopUp(tk.Toplevel):
         self.AppContext = parent.AppContext
 
 
-class Header(tk.Frame):
+class Header(ttk.Frame):
     """
     Header για όλα τα frames που κληρονομούν το AppFrame
     """
 
     def __init__(self, parent: tk.Frame, *args, **kwargs):
-        tk.Frame.__init__(
-            self, parent, *args, height=20, border=1, borderwidth=1, **kwargs
-        )
+        super().__init__(parent, *args, height=20, border=1, borderwidth=1, **kwargs)
 
 
-class Footer(tk.Frame):
+class Footer(ttk.Frame):
     """
     Footer για όλα τα frames που κληρονομούν το AppFrame
     """
 
     def __init__(self, parent: tk.Frame, root: tk.Tk, *args, **kwargs):
-        tk.Frame.__init__(
-            self, parent, *args, height=100, border=1, borderwidth=1, **kwargs
-        )
+        super().__init__(parent, *args, height=100, border=1, borderwidth=1, **kwargs)
         tk.Button(self, text="Back to Overview", command=parent.pack_forget).pack(
             side=tk.RIGHT
         )
 
 
-class BodyFrame(tk.Frame):
+class BodyFrame(ttk.Frame):
     """
     Άδειο frame στο οποίο φέρει την επιχειρησιακή λογική του
     κάθε AppFrame. Προγραμματίζεται στην μέθοδο body_logic του
@@ -40,12 +37,12 @@ class BodyFrame(tk.Frame):
     """
 
     def __init__(self, parent: tk.Frame, root: tk.Tk, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
+        super().__init__(parent, *args, **kwargs)
 
 
-class AppFrame(tk.Frame):
-    def __init__(self, root: tk.Tk):
-        tk.Frame.__init__(self, root)
+class AppFrame(ttk.Frame):
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
         """
         Σκοπός της κλάσσης είναι να κληρονομεί μερικά χαρακτηριστικά
         που θέλουμε να υπάρχουν σε όλα τα panels, όπως header/footer.

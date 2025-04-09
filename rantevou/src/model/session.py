@@ -36,19 +36,21 @@ def generate_fake_appointment_data():
     from random import randint
     from .appointment import Appointment
 
+    start_date = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
     for i in range(30):
-        date = datetime.now()
-        date.replace(hour=9, minute=0, second=0, microsecond=0)
-        date = date + timedelta(
-            days=randint(-1, 7), hours=randint(1, 8), minutes=randint(0, 2) * 20
-        )
+        start_date = start_date + timedelta(minutes=5 * randint(4, 20))
+        if start_date.hour > 17:
+            start_date = start_date.replace(day=start_date.day + 1, hour=9, minute=0)
+
         if i % 5 == 0:
             customer_id = None
         else:
             customer_id = randint(1, 30)
 
         is_alerted = bool(randint(0, 1))
-        yield Appointment(date=date, customer_id=customer_id, is_alerted=is_alerted)
+        yield Appointment(
+            date=start_date, customer_id=customer_id, is_alerted=is_alerted
+        )
 
 
 def initialize_db() -> None:
