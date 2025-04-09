@@ -21,6 +21,11 @@ mailer = Mailer()
 module_state: dict[str, Any] = {}
 cfg = get_config()
 cfg["minutes_in_period"] = cfg["working_hours"] // cfg["rows"] * 60
+subscriptions = []
+
+
+def add_subscription(node):
+    subscriptions.append(node)
 
 
 def fetch_customers():
@@ -93,6 +98,11 @@ def get_appointment_tab(node):
     return node.nametowidget(".!notebook.!appointments")
 
 
+def update_all(node):
+    app = get_appointment_tab(node)
+    app.update()
+
+
 class GridElement:
 
     def update(self):
@@ -133,17 +143,17 @@ class ColumnLabel(ttk.Label, GridElement):
 class AppointmentGroup(ttk.Frame, GridElement, AppointmentElement):
 
     def __init__(self, root, group_id, *args, **kwargs):
-        super().__init__(root, *args, **kwargs)
+        super().__init__(root, style="primary.TFrame", *args, **kwargs)
 
         self.wname = "bgrid"
         self.root = root
         self.group_id = group_id
         self.view = SidePanelAppointmentViewer(self.top.bodyframe, self.group_id)
-        self.text = tk.Label(self)
+        self.text = ttk.Label(self, style="primary.TLabel")
         self.text.pack(fill="both", expand=True)
-
         self.change_text()
         self.text.bind("<1>", self.show_in_side_panel)
+        add_subscription(self)
 
     @property
     def top(self) -> Appointments:
@@ -201,15 +211,38 @@ class SingleAppointment(ttk.Frame, SidePanelElement, AppointmentElement):
     add_button: ttk.Widget
 
     def __init__(self, root, appointment: Appointment | None, *args, **kwargs):
-        super().__init__(root, *args, **kwargs)
+        super().__init__(root, *args, style="primary.TFrame", **kwargs)
         self.appointment = appointment
         if self.appointment:
-            ttk.Button(self, text=str(appointment.date)).pack(side=tk.TOP, fill="x")
+            ttk.Button(self, text=str(appointment.date)).pack(
+                side=tk.TOP, fill="x", pady=1, padx=1
+            )
         else:
-            ttk.Button(self, text="+").pack(side=tk.TOP, fill="x")
+            ttk.Button(self, text="+", command=self.add_customer).pack(
+                side=tk.TOP, fill="x", pady=1, padx=1
+            )
+        self.properties = {}
+        add_subscription(self)
 
     def update(self):
-        pass
+        print(self.properties)
+
+    def add_customer(self):
+        self.popup = tk.Toplevel(self)
+        self.datef = tk.Entry(self.popup)
+        self.customer_idf = tk.Entry(self.popup)
+        self.datef.pack()
+        self.customer_idf.pack()
+        self.ok = tk.Button(self.popup, command=self.save_data)
+        self.ok.pack()
+
+        self.popup.mainloop()
+
+    def save_data(self):
+        self.properties["date"] = self.datef.get()
+        self.properties["customer_id"] = self.customer_idf.get()
+        self.popup.destroy()
+        update_all(self)
 
 
 class SidePanelViewer(ttk.Frame):
@@ -225,14 +258,15 @@ class SidePanelAppointmentViewer(SidePanelViewer):
     footer: ttk.Button
 
     def __init__(self, master, group_no: int, *args, **kwargs):
-        super().__init__(master, *args, **kwargs)
+        super().__init__(master, *args, style="primary.TFrame", **kwargs)
         self.group_no = group_no
         self.initialize()
         self.update()
+        add_subscription(self)
 
     def initialize(self):
         self.appointment_widgets = []
-        self.header = ttk.Label(self, text="Ραντεβου")
+        self.header = ttk.Label(self, text="Ραντεβου", style="TLabel")
         self.footer = ttk.Button(
             self, text="Back", command=lambda: self.top.change_side_view(None)
         )
@@ -318,7 +352,7 @@ class Appointments(AppFrame):
         )
         self.split_appointments_to_groups()
 
-        self.side_panel = ttk.Frame(self, name="side_panel")
+        self.side_panel = ttk.Frame(self, name="side_panel", style="primary.TFrame")
         self.side_panel.pack(side=tk.RIGHT, fill="y", padx=10, pady=10)
         self.button_grid = ttk.Frame(self, name="button_grid")
         self.button_grid.pack(side=tk.LEFT, fill="both", expand=True, padx=10, pady=10)
@@ -367,13 +401,13 @@ class Appointments(AppFrame):
             for row in range(self.cfg["rows"]):
                 element = AppointmentGroup(container, col * cfg["rows"] + row)
                 self.grid_buttons.append(element)
-                element.pack(fill="both", expand=True)
+                element.pack(fill="both", expand=True, pady=1, padx=1)
 
     ### --------- SIDE PANEL MAIN --------- ###
 
     def initialize_side_panel(self):
 
-        search_container = tk.Frame(self.side_panel, width=self.side_panel["width"])
+        search_container = ttk.Frame(self.side_panel, width=self.side_panel["width"])
         search_container.pack(side=tk.BOTTOM)
 
         self.search_button = ttk.Button(
@@ -381,7 +415,7 @@ class Appointments(AppFrame):
             text="Εύρεση κενού χρόνου",
             name="search_button",
             command=self.find_free_appointment,
-            width=search_container["width"] // 7,
+            width=270 // 7,
         )
         self.search_button.pack(side=tk.BOTTOM, fill="x")
 
@@ -394,9 +428,11 @@ class Appointments(AppFrame):
         self.search_label = ttk.Label(entry_frame, text="Διάρκεια: ")
         self.search_label.pack(side=tk.LEFT, fill="x")
 
-        self.bodyframe = tk.Frame(self.side_panel)
+        self.bodyframe = ttk.Frame(self.side_panel, style="primary.TFrame")
         self.bodyframe.pack(fill="both", expand=True)
-        self.initial_child: SidePanelViewer = SidePanelViewer(self.bodyframe)
+        self.initial_child: SidePanelViewer = SidePanelViewer(
+            self.bodyframe, style="primary.TFrame"
+        )
         self.bodyframe_child: SidePanelViewer | None = None
 
     def change_side_view(self, frame: SidePanelViewer | None = None):
@@ -485,3 +521,9 @@ class Appointments(AppFrame):
         while order < self.cfg["columns"] * self.cfg["rows"]:
             self.appointment_groups[order] = []
             order += 1
+
+    def update(self):
+        self.appointments = fetch_appointments()
+        self.split_appointments_to_groups()
+        for node in subscriptions:
+            node.update()
