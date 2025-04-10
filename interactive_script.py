@@ -2,9 +2,9 @@ from rantevou.src.controller.mailer import Mailer
 from rantevou.src.controller.appointments_controller import AppointmentControl
 from rantevou.src.controller.customers_controller import CustomerControl
 
-# mlr = Mailer()
-# ac = AppointmentControl()
-# cc = CustomerControl()
+mlr = Mailer()
+ac = AppointmentControl()
+cc = CustomerControl()
 
 # from datetime import datetime, timedelta
 
@@ -15,5 +15,3 @@ from rantevou.src.controller.customers_controller import CustomerControl
 #     ),
 #     sep="\n",
 # )
-
-print(*AppointmentControl().get_free_periods(), sep="\n")
