@@ -9,6 +9,13 @@ from sqlalchemy import ForeignKey
 from .session import Base, SessionLocal
 from . import customer
 
+from typing import Protocol
+
+
+class Subscriber(Protocol):
+    def subscriber_update(self):
+        pass
+
 
 class Appointment(Base):
     __tablename__ = "appointment"
@@ -64,12 +71,13 @@ class Appointment(Base):
 class AppointmentModel:
 
     appointments: list[Appointment]
-    subscribers: list[Any]
+    subscribers: list[Subscriber]
 
     def __init__(self):
 
-        self.appointments = self.get_appointments()
         self.subscribers = []
+        self.session = SessionLocal()
+        self.appointments = self.get_appointments(cached=False)
 
     def sort(self, list_=None) -> list[Appointment]:
         if list_:
@@ -80,71 +88,75 @@ class AppointmentModel:
             return self.appointments
 
     def add_appointment(self, appointment: Appointment):
-        with SessionLocal() as session:
-            session.add(appointment)
-            session.commit()
-            appointment_with_id = (
-                session.query(Appointment)
-                .filter(Appointment.date == appointment.date)
-                .first()
-            )
+
+        self.session.add(appointment)
+        self.session.commit()
+        appointment_with_id = (
+            self.session.query(Appointment)
+            .filter(Appointment.date == appointment.date)
+            .first()
+        )
 
         if appointment_with_id:
-            self.appointments.append(appointment_with_id)
+            self.add_to_cache(appointment_with_id)
 
-        self.sort()
         self.update_subscribers()
 
     def update_appointment(self, new: Appointment):
-        with SessionLocal() as session:
-            old = session.query(Appointment).filter_by(id=new.id).first()
-            if old:
-                self.appointments = [*filter(lambda x: x != old, self.appointments)]
-                self.appointments.append(new)
-                old.id = new.id
-                old.date = new.date
-                old.is_alerted = new.is_alerted
-                old.duration = new.duration
-                old.customer_id = new.customer_id
-            session.commit()
+        target = None
 
-        self.sort()
+        old = self.session.query(Appointment).filter_by(id=new.id).first()
+        if old:
+            self.replace_in_cache(old, new)
+            self.appointments.append(new)
+            old.id = new.id
+            old.date = new.date
+            old.is_alerted = new.is_alerted
+            old.duration = new.duration
+            old.customer_id = new.customer_id
+        self.session.commit()
+
+        if target:
+            self.appointments[self.appointments.index(target)] = new
         self.update_subscribers()
 
     def delete_appointment(self, appointment: Appointment):
-        with SessionLocal() as session:
-            session.delete(appointment)
 
+        self.session.delete(appointment)
+
+        self.appointments.remove(appointment)
         self.sort()
         self.update_subscribers()
 
-    def get_appointments(self) -> list[Appointment]:
-        with SessionLocal() as session:
-            query = session.query(Appointment).all()
+    def get_appointments(self, cached=True) -> list[Appointment]:
+        if cached:
+            return self.appointments
+
+        query = self.session.query(Appointment).all()
         return self.sort(query)
 
     def get_appointment_by_id(self, appointment_id: int) -> Appointment | None:
-        with SessionLocal() as session:
-            return session.query(Appointment).filter_by(id=appointment_id).first()
+        return self.session.query(Appointment).filter_by(id=appointment_id).first()
 
     def get_appointment_by_date(self, date: datetime) -> Appointment | None:
-        with SessionLocal() as session:
-            return session.query(Appointment).filter_by(date=date).first()
+        return self.session.query(Appointment).filter_by(date=date).first()
 
-    def get_appointments_from_to_date(self, from_date: datetime, to_date: datetime):
-        with SessionLocal() as session:
-            return session.query(Appointment).filter(
-                Appointment.date >= from_date, Appointment.date < to_date
-            )
+    def get_appointments_from_to_date(
+        self, from_date: datetime, to_date: datetime
+    ) -> list[Appointment]:
 
-    def add_subscriber(self, subscriber: Any):
-        if hasattr(subscriber, "update"):
-            self.subscribers.append(subscriber)
+        return (
+            self.session.query(Appointment)
+            .filter(Appointment.date >= from_date, Appointment.date < to_date)
+            .all()
+        )
+
+    def add_subscriber(self, subscriber: Subscriber):
+        self.subscribers.append(subscriber)
 
     def update_subscribers(self):
         for subscriber in self.subscribers:
-            if hasattr(subscriber, "update"):
-                subscriber.update()
+            subscriber.subscriber_update()
 
     def split_appointments_in_periods(
         self,
@@ -201,3 +213,17 @@ class AppointmentModel:
                 result.append((previous.end_date, diff))
 
         return result
+
+    def replace_in_cache(self, target, new):
+        i = self.appointments.index(target)
+        self.appointments[i] = new
+
+    def add_to_cache(self, target):
+        for i in range(len(self.appointments) - 1, 0, -1):
+            if self.appointments[i].date > target.date:
+                continue
+            self.appointments.insert(i + 1, target)
+            break
+
+    def delete_from_cache(self, target):
+        self.appointments.remove(target)

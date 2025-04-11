@@ -12,7 +12,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import Any
-from .appointments import Appointments
+from .appointments import AppointmentsTab
 from .customers import Customers
 from .statistics import Statistics
 from .alerts import Alerts
@@ -44,7 +44,7 @@ class Window(tk.Tk):
         self.title(title)
         self.tabs = Notebook(self)
         self.tabs.pack(fill="both", expand=True)
-        self.tabs.add(Appointments(self.tabs), text="Appointments")
+        self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
         self.tabs.add(Customers(self.tabs), text="Customers")
         self.tabs.add(Statistics(self.tabs), text="Statistics")
         self.tabs.add(Alerts(self.tabs), text="Alerts")

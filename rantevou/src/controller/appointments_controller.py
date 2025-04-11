@@ -130,3 +130,6 @@ class AppointmentControl:
         self, date: datetime, start_date: datetime, period_duration: timedelta
     ) -> int:
         return (date - start_date) // period_duration
+
+    def get_appointments_from_to_date(self, start: datetime, end: datetime):
+        return self.model.get_appointments_from_to_date(start, end)

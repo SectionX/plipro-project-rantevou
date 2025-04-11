@@ -24,11 +24,10 @@ class Mailer:
         τα κλέψει!
         """
         logger.log_info("Connecting to smtp")
-        self.server = smtplib.SMTP("smtp.gmail.com", 587)
-        self.server.starttls()
-        self.server.login(
-            "plipro.hle55.team3@gmail.com", "lpri ryfl pdjr hlef"
-        )  # App Password, δεν είναι ο πραγματικός κωδικός.
+        self.host = "smtp.gmail.com"
+        self.port = 587
+        self.sender = "plipro.hle55.team3@gmail.com"
+        self.passw = "lpri ryfl pdjr hlef"
 
     # TODO αλλαγή σε debug=False όταν ολοκληρωθεί και τεσταριστεί το πρόγραμμα
     def send_email(self, appointments, debug=False) -> None:
@@ -47,7 +46,6 @@ class Mailer:
         Βρίσκει τους πελάτες που αντιστοιχούν στα ραντεβού και τους
         στέλνει email
         """
-        print(appointments)
         if debug:
             logger.log_info("Debug mode enabled, emails won't reach the recipient")
         self.start_server()
@@ -59,6 +57,14 @@ class Mailer:
         for appointment in appointments:
             customer = appointment.get_customer()
             if customer is None:
+                logger.log_warn(
+                    f"No customer is associated with appointment {appointment.id}.{appointment.date}"
+                )
+                continue
+            if customer.email is None:
+                logger.log_warn(
+                    f"No email was found for customer {customer.id}.{customer.full_name}"
+                )
                 continue
             date = appointment.date.strftime("%d/%m και ώρα %H:%M")
             logger.log_info(f"Mailing to {customer.email}")
@@ -71,10 +77,11 @@ class Mailer:
             if debug:
                 logger.log_info(body.format(customer.name, date))
             else:
-                self.server.sendmail(
-                    "plipro.hle55.team3@gmail.com",
-                    customer.email,
-                    email.as_string(),
-                )
-
-        self.server.quit()
+                with smtplib.SMTP(self.host, self.port) as server:
+                    server.starttls()
+                    server.login(self.sender, self.passw)
+                    server.sendmail(
+                        "plipro.hle55.team3@gmail.com",
+                        customer.email,
+                        email.as_string(),
+                    )

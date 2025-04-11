@@ -11,6 +11,10 @@ SQLALCHEMY_DATABASE_URL = f"sqlite:///{str(DB_PATH)}"  # Προσωρινό
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+session = SessionLocal()
+for x in session:
+    print(x)
+
 
 class Base(DeclarativeBase):
     pass

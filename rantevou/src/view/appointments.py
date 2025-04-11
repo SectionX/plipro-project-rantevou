@@ -3,9 +3,9 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from datetime import timedelta as td
-from typing import Any
+from typing import Any, Literal
 from .abstract_views import AppFrame
 from ..controller.appointments_controller import AppointmentControl as AC
 from ..controller.customers_controller import CustomerControl as CC
@@ -14,13 +14,15 @@ from ..controller.mailer import Mailer
 from ..controller import get_config
 from ..model.types import Customer, Appointment
 
-logger = Logger("Appointments")
+logger = Logger("AppointmentsTab")
 ac = AC()
 cc = CC()
 mailer = Mailer()
 module_state: dict[str, Any] = {}
-cfg: dict[str, Any] = get_config()
-cfg["minutes_in_period"] = cfg["working_hours"] // cfg["rows"] * 60
+cfg: dict[str, Any] = (
+    get_config()
+)  # working_hours, opening_hour, rows, columns, minimum appointment duration
+cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 
 
 def add_subscription(node):
@@ -85,8 +87,8 @@ def fetch_appointmets_by_id(id):
     return ac.get_appointment_by_id(id)
 
 
-def send_mail(*appointments):
-    mailer.send_email(*appointments)
+def send_mail(appointments):
+    mailer.send_email(appointments, debug=True)  # TODO change to live
 
 
 def dict_to_customer(dict):
@@ -97,81 +99,71 @@ def dict_to_appointment(dict):
     return Appointment(**dict)
 
 
-def get_appointment_tab(node):
-    return node.nametowidget(".!notebook.!appointments")
+class SubscriberInterface:
+    def __init__(self):
+        add_subscription(self)
+
+    def subscriber_update(self):
+        raise NotImplementedError
 
 
-class Appointments(AppFrame):
+class AppointmentsTab(AppFrame, SubscriberInterface):
 
     appointments: list[Appointment]
-    cfg: dict[str, Any]
+    appointment_groups: dict[int, list[Appointment]]
     start_date: datetime
+    group_period: timedelta
     end_date: datetime
-    time_format: str = "%H:%M"
-    appointment_groups: dict[int, list[Appointment]] = {}
-    appointment_group_index: int = 0
-    grid_buttons: list[ttk.Widget] = []
-    button_grid: ttk.Frame
-    side_panel: ttk.Frame
 
-    def __init__(self, root, *args, name="appointments", **kwargs):
+    mail_panel: Grid
+    side_panel: SidePanel
+
+    # Shared data
+    start_date = datetime.now().replace(
+        hour=cfg["opening_hour"],
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    end_date = start_date + timedelta(
+        days=cfg["columns"],
+        hours=cfg["working_hours"],
+    )
+
+    group_period = cfg["group_period"]
+
+    appointments = ac.get_appointments()
+    appointment_groups = ac.get_appointments_grouped_in_periods(
+        start=start_date, period=timedelta(minutes=120)
+    )
+
+    def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.name = name
-        self.appointments = fetch_appointments()
+        SubscriberInterface.__init__(self)
+        self.mail_panel = Grid(self, AppointmentsTab.start_date)
+        self.side_panel = SidePanel(self, style="primary.TFrame")
 
-        self.cfg = cfg
-        self.cfg["working_minutes"] = self.cfg["working_hours"] * 60
-        self.cfg["periods_per_day"] = self.cfg["working_hours"] // self.cfg["rows"]
-        self.cfg["period_duration_in_hours"] = timedelta(
-            hours=self.cfg["working_hours"] // self.cfg["rows"]
+        self.mail_panel.pack(side=tk.LEFT, fill="both", expand=True, padx=10, pady=10)
+        self.side_panel.pack(
+            side=tk.RIGHT,
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10,
         )
 
-        self.max_button_count = int(
-            self.cfg["columns"]
-            * self.cfg["working_hours"]
-            // self.cfg["minimum_appointment_duration"]
+    def subscriber_update(self):
+        AppointmentsTab.appointments = fetch_appointments()
+        print(*AppointmentsTab.appointments, sep="\n")
+        AppointmentsTab.appointment_groups = ac.get_appointments_grouped_in_periods(
+            AppointmentsTab.start_date, AppointmentsTab.group_period
         )
-
-        self.start_date = datetime.now().replace(
-            hour=self.cfg["opening_hour"],
-            minute=0,
-            second=0,
-            microsecond=0,
-        )
-
-        self.end_date = self.start_date + timedelta(
-            days=self.cfg["columns"],
-            hours=self.cfg["working_hours"],
-        )
-
-        self.group_period = timedelta(
-            hours=self.cfg["working_hours"] // self.cfg["rows"]
-        )
-        self.appointment_groups = ac.get_appointments_grouped_in_periods(
-            start=self.start_date, period=self.cfg["period_duration_in_hours"]
-        )
-
-        self.side_panel = ttk.Frame(self, name="side_panel", style="primary.TFrame")
-        self.side_panel.pack(side=tk.RIGHT, fill="y", padx=10, pady=10)
-
-        self.grid = ttk.Frame(self, name="button_grid")
-        self.grid.pack(side=tk.LEFT, fill="both", expand=True, padx=10, pady=10)
-
-        self.navigation_bar = ttk.Frame(self.grid, name="navbar")
-        self.navigation_bar.pack(side=tk.TOP, fill=("x"))
 
 
 ###
 
 data_pipeline: dict[str, Any] = {}
-
-
-class SubscriberInterface:
-    def __init__(self):
-        add_subscription(self)
-
-    def update(self):
-        raise NotImplementedError
 
 
 class GridNavBar(ttk.Frame):
@@ -190,16 +182,17 @@ class Grid(ttk.Frame):
     start_date: datetime
 
     def __init__(self, root, start_date, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
         self.start_date = start_date
         self.period_duration = timedelta(hours=2)
         self.columns = []
 
-        self.navbar = GridNavBar(root, *args, **kwargs)
+        self.navbar = GridNavBar(self, *args, **kwargs)
         self.navbar.pack(fill="x")
 
         for i in range(7):
             start_date = self.start_date + timedelta(days=i)
-            end_date = start_date + timedelta(days=i, hours=8)
+            end_date = start_date + timedelta(hours=8)
             start_index = ac.get_index_from_date(
                 start_date, self.start_date, self.period_duration
             )
@@ -212,6 +205,7 @@ class Grid(ttk.Frame):
                     period_duration=self.period_duration,
                 )
             )
+            self.columns[i].pack(side=tk.LEFT, fill="both", expand=True)
 
     def move_left(self):
         for column in self.columns:
@@ -228,6 +222,7 @@ class GridHeader(ttk.Label):
     def __init__(self, root, date: datetime, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
         self.date = date
+        self.draw()
 
     def draw(self):
         self.config(text=self.date.strftime("%d/%m"))
@@ -243,7 +238,7 @@ class GridHeader(ttk.Label):
 
 class GridColumn(ttk.Frame):
     header: GridHeader
-    rows: list[GridGroup]
+    rows: list[GridRow]
     start_date: datetime
     end_date: datetime
     period_duration: timedelta
@@ -269,16 +264,13 @@ class GridColumn(ttk.Frame):
         start = start_date
         i = 0
         while start < end_date:
-            self.rows.append(GridGroup(self, start_index + i, start, period_duration))
+            self.rows.append(GridRow(self, start_index + i, start, period_duration))
             i += 1
             start += period_duration
 
-        self.draw()
-
-    def draw(self):
         self.header.pack(fill="x")
         for row in self.rows:
-            row.pack(fill="both", expand=True)
+            row.pack(fill="both", expand=True, padx=3, pady=3)
 
     def move_left(self):
         self.header.move_left()
@@ -291,13 +283,12 @@ class GridColumn(ttk.Frame):
             row.move_right()
 
 
-class GridGroup(ttk.Frame, SubscriberInterface):
+class GridRow(ttk.Frame, SubscriberInterface):
     edit_buttons: list[AppointmentEditButton]
     add_button: AppointmentAddButton
     group_index: int
     period_start: datetime
     period_duration: timedelta
-    top: Appointments
 
     def __init__(
         self,
@@ -310,21 +301,21 @@ class GridGroup(ttk.Frame, SubscriberInterface):
     ):
         SubscriberInterface.__init__(self)
         ttk.Frame.__init__(self, root, *args, **kwargs)
+        self.config(style="primary.TFrame")
+
         self.group_index = appointment_group_index
         self.period_start = period_start
         self.period_duration = period_duration
         self.period_end = period_start + period_duration
-        self.text = ttk.Label(self)
-        self.text.pack(fill="both", expand=True)
-
-        self.top = get_appointment_tab(self)
-        self.update()
+        self.text = ttk.Label(self, style="primary.TLabel")
+        self.text.pack(fill="both", expand=True, padx=3, pady=3)
+        self.draw()
 
     @property
     def appointments(self):
-        return self.top.appointment_groups[self.group_index]
+        return AppointmentsTab.appointment_groups[self.group_index]
 
-    def update(self):
+    def subscriber_update(self):
         self.draw()
 
     def draw(self):
@@ -348,13 +339,15 @@ class GridGroup(ttk.Frame, SubscriberInterface):
 
 
 class SidePanel(ttk.Frame):
-    side_views: dict[str, SideView]
+    side_views: dict[str, SideView]  # search, previous_view
     search_bar: SearchBar
     active_view: SideView
+    data_pipeline: dict[str, Any] = {}
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.panel_views = {
+        SidePanel.update_data("self", self)
+        self.side_views = {
             "alert": AlertsView(self),
             "appointment": AppointmentView(self),
             "search": SearchResultsView(self),
@@ -367,46 +360,300 @@ class SidePanel(ttk.Frame):
         self.select_view()
 
     def select_view(self, view: str | None = None):
+        SidePanel.update_data("previous_view", self.active_view.name)
         self.active_view.forget()
         if view is None:
             view = "alert"
-        self.active_view = self.panel_views[view]
+        self.active_view = self.side_views[view]
         self.active_view.pack(side=tk.TOP, fill="both", expand=True)
-        self.active_view.update_contents()
+        self.active_view.update_content()
 
-
-class SidePanelHeader(ttk.Label):
-    panel_name: str
+    @classmethod
+    def update_data(cls, key, value):
+        cls.data_pipeline[key] = value
 
 
 class SideView(ttk.Frame):
     name: str = ""
     data: Any
+    header: ttk.Label
+    back_btn: ttk.Button
 
-    def update_contents(self):
-        self.data = data_pipeline[self.name]
+    def __init__(self, root: SidePanel, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.root = root
+        self.config(style="primary.TFrame")
+
+    def update_content(self):
         ...
         raise NotImplementedError
+
+    def set_title(self, text: str):
+        if hasattr(self, "header"):
+            self.header.config(text=text)
+            return
+        self.header = ttk.Label(self, text=text)
+        self.header.pack(side=tk.TOP, fill="x")
+
+    @classmethod
+    def add_back_btn(cls, widget):
+        btnframe = ttk.Frame(widget)
+        btnframe.pack(side=tk.BOTTOM, fill="x")
+        button = ttk.Button(
+            btnframe,
+            text="Back",
+            command=lambda: SidePanel.data_pipeline["self"].select_view("alert"),
+        )
+        button.pack(side=tk.RIGHT)
 
 
 class AppointmentView(SideView):
     name: str = "appointment"
 
 
-class AlertsView(SideView):
+class AlertRow(ttk.Frame):
+    appointment: Appointment | None
+    customer: Customer | None
+    show_button: ttk.Button
+    email_button: ttk.Button
+    text: ttk.Label
+    remaining_time: ttk.Label
+    button_frame: ttk.Frame
+    cancel_id: str | None
+    _state: Literal["inactive", "active", "pending"]
+
+    def __init__(self, master: AlertsView, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.root = master
+        self.button_frame = ttk.Frame(self)
+        self.show_button = ttk.Button(
+            self.button_frame, text="settings", command=self.show_edit, width=20
+        )
+        self.email_button = ttk.Button(
+            self.button_frame, text="@", command=self.send_email, width=3
+        )
+        self.customer = None
+        self.cancel_id = None
+        self._state = "inactive"
+
+        self.button_frame.pack(fill="x")
+        self.show_button.pack(side=tk.LEFT, fill="x")
+        self.email_button.pack(side=tk.RIGHT)
+
+    def set_appointment(self, appointment: Appointment | None):
+        if self.cancel_id is not None:
+            self.after_cancel(self.cancel_id)
+
+        if appointment is None:
+            self.forget()
+            self._state = "inactive"
+            return
+
+        self._state = "active"
+        self.appointment = appointment
+        self.customer = appointment.customer
+        self.update_content()
+
+    def update_content(self):
+        if self.appointment is None:
+            self.root.pop_row(self)
+            self._state = "inactive"
+            return
+
+        original_date = self.appointment.date
+        extended_date = original_date + timedelta(minutes=10)
+        now = datetime.now()
+
+        if extended_date < now:
+            self.root.pop_row(self)
+            self._state = "inactive"
+            return
+
+        if original_date <= extended_date < now:
+            self._state = "pending"
+
+        self.draw()
+        self.cancel_id = self.after(1000, self.update_content)
+
+    def draw(self):
+        if self.appointment is None:
+            return
+        total_secs = self.appointment.time_to_appointment.total_seconds()
+        mins, secs = total_secs // 60, total_secs % 60
+        hours, mins = mins // 60, mins % 60
+        time = f"{int(hours):02d}:{int(mins):02d}"
+
+        if self.customer:
+            name = self.customer.name
+        else:
+            name = "     ---     "
+        self.show_button.config(text=f"{name:<15} {time}")
+
+    def send_email(self):
+        if self.appointment:
+            if self.customer and self.customer.email:
+                send_mail([self.appointment])
+            else:
+                showerror("Customer doesn't have an email")
+
+    def show_edit(self):
+        ...
+        # switch to email edit view
+        raise NotImplementedError
+
+
+class AlertsView(SideView, SubscriberInterface):
     name: str = "alert"
+    rows: list[AlertRow]
+    appointments: list[Appointment]
+
+    def __init__(self, root, *args, **kwargs):
+        SubscriberInterface.__init__(self)
+        super().__init__(root, *args, **kwargs)
+        self.name = self.__class__.name
+        self.set_title("Ειδοποιήσεις")
+        self.appointments = []
+        self.rows = []
+
+    def update_content(self):
+        self.appointments = ac.get_appointments_from_to_date(
+            start=datetime.now(), end=datetime.now() + timedelta(days=7)
+        )
+        alerts_count = len(self.appointments)
+        rows_count = len(self.rows)
+        print(alerts_count, rows_count)
+
+        if alerts_count > rows_count:
+            for _ in range(alerts_count - rows_count):
+                self.rows.append(AlertRow(self))
+
+        if rows_count > alerts_count:
+            for _ in range(rows_count - alerts_count):
+                row = self.rows.pop()
+                row.destroy()
+
+        alerts_count = len(self.appointments)
+        rows_count = len(self.rows)
+        assert alerts_count == rows_count
+
+        for row, appointment in zip(self.rows, self.appointments):
+            row.set_appointment(appointment)
+            row.pack(fill="x", pady=1, padx=1)
+
+    def pop_row(self, row: AlertRow):
+        row.forget()
+
+    def subscriber_update(self):
+        self.update_content()
 
 
 class SearchResultsView(SideView):
     name: str = "search"
+    periods: list[tuple[datetime, timedelta]]
+    result_frame: ttk.Frame
+
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.name = self.__class__.name
+        self.set_title("Αποτελέσματα")
+        self.result_frame = ttk.Frame(self)
+        self.add_back_btn(self)
+        self.periods = []
+
+    def update_content(self):
+        print("content")
+        self.periods = SidePanel.data_pipeline["search"]
+        self.result_frame.destroy()
+        self.result_frame = ttk.Frame(self)
+        for period in self.periods:
+            start = period[0].strftime("%d/%m: %H:%M")
+            duration = period[1].total_seconds() // 60
+            ttk.Button(
+                self.result_frame,
+                text=f"{start}-{duration} λεπτά",
+                command=lambda: self.open_add_screen(period),
+            ).pack(fill="x")
+        self.result_frame.pack(fill="x")
+
+    def open_add_screen(self, period):
+        SidePanel.update_data("add_assist_date", period[0])
+        self.root.select_view("add")
 
 
 class EditAppointmentView(SideView):
     name: str = "edit"
 
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.name = self.__class__.name
+
 
 class AddAppointmentView(SideView):
     name: str = "add"
+    field_day: ttk.Entry
+    field_hour: ttk.Entry
+    field_minute: ttk.Entry
+    field_customer: ttk.Entry
+
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.name = self.__class__.name
+        self.set_title("Προσθήκη νέου ραντεβού")
+        self.main_frame = ttk.Frame(self)
+        self.main_frame.pack(fill="both", expand=True)
+        self.add_back_btn(self)
+
+        self.day_frame = ttk.Frame(self)
+        self.hour_frame = ttk.Frame(self)
+        self.minute_frame = ttk.Frame(self)
+        self.customer_frame = ttk.Frame(self)
+        self.day_frame.pack()
+        self.hour_frame.pack()
+        self.minute_frame.pack()
+        self.customer_frame.pack()
+
+        self.day_label = ttk.Label(self.day_frame, text="Ημέρα:")
+        self.hour_label = ttk.Label(self.hour_frame, text="Ώρα:")
+        self.minute_label = ttk.Label(self.minute_frame, text="Λεπτά:")
+        self.customer_label = ttk.Label(self.customer_frame, text="Πελάτης:")
+
+        self.day_label.pack(side=tk.LEFT, fill="x")
+        self.hour_label.pack(side=tk.LEFT, fill="x")
+        self.minute_label.pack(side=tk.LEFT, fill="x")
+        self.customer_label.pack(side=tk.LEFT, fill="x")
+
+        self.field_day = ttk.Entry(self.day_frame)
+        self.field_hour = ttk.Entry(self.hour_frame)
+        self.field_minute = ttk.Entry(self.minute_frame)
+        self.field_customer = ttk.Entry(self.customer_frame)
+
+        self.field_day.pack(side=tk.RIGHT, fill="x")
+        self.field_hour.pack(side=tk.RIGHT, fill="x")
+        self.field_minute.pack(side=tk.RIGHT, fill="x")
+        self.field_customer.pack(side=tk.RIGHT, fill="x")
+
+        self.add_button = tk.Button(self, text="Προσθήκη", command=self.add)
+        self.add_button.pack()
+
+    def add(self):
+        date = datetime.now().replace(
+            day=int(self.field_day.get()),
+            hour=int(self.field_hour.get()),
+            minute=int(self.field_minute.get()),
+            second=0,
+            microsecond=0,
+        )
+        customer_input = self.field_customer.get()
+        if customer_input:
+            customer_id = int(customer_input)
+        else:
+            customer_id = None
+        ac.create_appointment(Appointment(date=date, customer_id=customer_id))
+        print("Added", date)
+        SidePanel.data_pipeline["self"].select_view("alert")
+
+    def update_content(self):
+        pass  # TODO μυνημα επιτυχίας/αποτυχίας
 
 
 class SearchBar(ttk.Frame):
@@ -417,11 +664,24 @@ class SearchBar(ttk.Frame):
     affects: SearchResultsView
     search_results: list[tuple[datetime, timedelta]]
 
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.inputframe = ttk.Frame(self)
+        self.label = ttk.Label(self.inputframe, text="Διάρκεια")
+        self.entry = ttk.Entry(self.inputframe)
+        self.button = ttk.Button(self, text="Εύρεση κενού χρόνου", command=self.search)
+        self.label.pack(side=tk.LEFT)
+        self.entry.pack(side=tk.RIGHT)
+        self.inputframe.pack(side=tk.TOP, fill="x", expand=True)
+        self.button.pack(side=tk.BOTTOM, fill="x")
+
     def search(self):
         self.duration = timedelta(minutes=int(self.entry.get()))
         self.search_results = ac.get_time_between_appointments(
             start_date=datetime.now(), minumum_free_period=self.duration
         )
+        SidePanel.update_data("search", self.search_results)
+        SidePanel.data_pipeline["self"].select_view("search")
 
 
 class AppointmentButton(ttk.Button, SubscriberInterface):

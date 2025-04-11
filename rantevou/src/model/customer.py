@@ -18,6 +18,10 @@ class Customer(Base):
         foreign_keys="[Appointment.customer_id]",
     )
 
+    @property
+    def full_name(self):
+        return f"{self.name} {self.surname or ''}"
+
     def __str__(self) -> str:
         return (
             f"Customer(id={self.id}, name={self.name}, "
