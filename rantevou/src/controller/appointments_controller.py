@@ -2,14 +2,14 @@ from datetime import datetime, timedelta
 from typing import NamedTuple
 from .logging import Logger
 from ..model.session import SessionLocal
-from ..model.types import Appointment
+from ..model.types import Appointment, AppointmentModel
 
-# TODO: Η υλοποίηση σε αυτές τις συναρτήσεις είναι ενδεικτική
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
-# TODO: Πρέπει να αλλαχθεί το πρόγραμμα ώστε κάθε φορά που ολοκληρώνονται οι
-#       διαδικασιες του session, να κλείνει (session.close()). Ο λόγος που
-#       έγινε έτσι ήταν θέμα ταχύτητας, δουλεύει, αλλά δημιουργεί και προβλήματα
-#       μερικές φορές, ειδικά επειδή η sqlite δεν είναι ασύγχρονη.
+# TODO: Πρέπει να ελεγχθούν όλοι οι είσοδοι ότι έχουν ορθά στοιχεία και να
+# επιστραφεί το κατάλληλο μύνημα
+
+# Ουσιαστικά οι περισσότερες συναρτήσεις απλά καλούν το αποτέλεσμα από το model.
+# Το όλο θέμα είναι να μπουν logs και error checking σε κάθε συνάρτηση
 
 logger = Logger("appointments_controller")
 
@@ -29,13 +29,13 @@ class AppointmentControl:
     """
 
     def __init__(self):
-        self.session = SessionLocal()
+        self.model = AppointmentModel()
 
     def get_appointments(self) -> list[Appointment]:
         """
         Επιστρέφει όλες τις εγγραφές από το table Appointments
         """
-        return self.session.query(Appointment).all()
+        return self.model.get_appointments()
 
     def create_appointment(self, appointment: Appointment | dict) -> None:
         """
@@ -46,17 +46,14 @@ class AppointmentControl:
 
         if not self.validate_appointment(appointment):
             raise ValueError
-        self.session.add(appointment)
-        self.session.commit()
+        self.model.add_appointment(appointment)
 
     def delete_appointment(self, appointment: Appointment | dict | int) -> bool:
         """
         Σβήνει μια εγγραφή από το table Appointments
         """
         if isinstance(appointment, int):
-            full_appointment = (
-                self.session.query(Appointment).filter_by(id=appointment).first()
-            )
+            full_appointment = self.model.get_appointment_by_id(appointment)
             if full_appointment:
                 appointment = full_appointment
             else:
@@ -69,12 +66,7 @@ class AppointmentControl:
                 logger.log_warn(str(e))
                 return False
 
-        self.session.delete(appointment)
-
-        try:
-            self.session.commit()
-        except Exception as e:
-            return False
+        self.model.delete_appointment(appointment)
 
         return True
 
@@ -89,26 +81,20 @@ class AppointmentControl:
                 logger.log_warn(str(e))
                 return False
 
-        old_appointment = (
-            self.session.query(Appointment).filter_by(id=appointment.id).first()
-        )
-        if old_appointment:
-            old_appointment.date = appointment.date
-            old_appointment.customer_id = appointment.customer_id
-
-        try:
-            self.session.commit()
-            logger.log_info(f"Update of {appointment} complete")
-        except Exception as e:
-            logger.log_warn(str(e))
-            return False
+        self.model.update_appointment(appointment)
         return True
 
     def get_appointment_by_id(self, id: int) -> Appointment | None:
         """
         Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
         """
-        return self.session.query(Appointment).filter_by(id=id).first()
+        return self.model.get_appointment_by_id(id)
+
+    def get_appointment_by_date(self, date: datetime) -> Appointment | None:
+        """
+        Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
+        """
+        return self.model.get_appointment_by_date(date)
 
     def validate_appointment(self, appointment: Appointment | dict) -> bool:
         """
@@ -123,53 +109,27 @@ class AppointmentControl:
         self,
         start: datetime,
         period: timedelta,
-        end: datetime | None = None,
-        appointments: list[Appointment] | None = None,
     ):
-        if not appointments:
-            appointments = (
-                self.session.query(Appointment).filter(Appointment.date >= start).all()
-            )
-        if not appointments:
-            return None
-        appointments.sort(key=lambda x: x.date)
+        return self.model.split_appointments_in_periods(period, start)
 
-        order = 0
+    def add_subscription(self, subscriber):
+        self.model.add_subscriber(subscriber)
 
-        if end is None:
-            end = appointments[-1].date
+    def update_subscribers(self):
+        self.model.update_subscribers()
 
-        buffer: list[Appointment | None] = []
+    def get_time_between_appointments(
+        self,
+        start_date: datetime | None = None,
+        minumum_free_period: timedelta | None = None,
+    ) -> list[tuple[datetime, timedelta]]:
 
-        app_ptr = 0
-        while start < end:
-            start += period
-            while app_ptr < len(appointments):
-                if appointments[app_ptr].date < start:
-                    buffer.append(appointments[app_ptr])
-                    app_ptr += 1
-                else:
-                    yield AppointmentGroup(
-                        order=order,
-                        start_date=start - period,
-                        end_date=start,
-                        length=len(buffer),
-                        appointments=tuple(buffer),
-                    )
-                    buffer.clear()
-                    order += 1
-                    break
+        return self.model.get_time_between_appointments(start_date, minumum_free_period)
 
-    def get_free_periods(self):
-        appointments = iter(
-            self.session.query(Appointment)
-            .filter(Appointment.date > datetime.now())
-            .all()
-        )
-        start = next(appointments)
-        for appointment in appointments:
-            yield (
-                start,
-                start.time_between_appointments(appointment),
-            )
-            start = appointment
+    def get_index_from_date(
+        self, date: datetime, start_date: datetime, period_duration: timedelta
+    ) -> int:
+        return (date - start_date) // period_duration
+
+    def get_appointments_from_to_date(self, start: datetime, end: datetime):
+        return self.model.get_appointments_from_to_date(start, end)
