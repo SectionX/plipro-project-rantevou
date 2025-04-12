@@ -8,8 +8,11 @@ from sqlalchemy import ForeignKey
 
 from .session import Base, SessionLocal
 from . import customer
+from ..controller.logging import Logger
 
 from typing import Protocol
+
+logger = Logger("appointment-model")
 
 
 class Subscriber(Protocol):
@@ -34,7 +37,9 @@ class Appointment(Base):
     date: Mapped[datetime] = mapped_column(nullable=False, unique=True)
     is_alerted: Mapped[bool] = mapped_column(default=False)
     duration: Mapped[int] = mapped_column(default=20)
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id"), nullable=True)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customer.id"), nullable=True
+    )
 
     customer = relationship(
         "Customer",
@@ -120,7 +125,7 @@ class AppointmentModel:
             self.appointments.sort(key=lambda x: x.date)
             return self.appointments
 
-    def add_appointment(self, appointment: Appointment):
+    def add_appointment(self, appointment: Appointment, update: bool = True) -> int:
         self.session.add(appointment)
         self.session.commit()
         appointment_with_id = (
@@ -128,11 +133,17 @@ class AppointmentModel:
             .filter(Appointment.date == appointment.date)
             .first()
         )
+        if appointment_with_id is None:
+            logger.log_error("Failed to retrieve appointment id after insertion")
+            raise Exception(f"DB Failure on inserting {appointment}")
 
         if appointment_with_id:
             self.add_to_cache(appointment_with_id)
 
-        self.update_subscribers()
+        if update:
+            self.update_subscribers()
+
+        return appointment_with_id.id
 
     def update_appointment(self, new: Appointment):
         target = None

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import NamedTuple
 from .logging import Logger
 from ..model.session import SessionLocal
-from ..model.types import Appointment, AppointmentModel
+from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
 
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
 # TODO: Πρέπει να ελεγχθούν όλοι οι είσοδοι ότι έχουν ορθά στοιχεία και να
@@ -37,20 +37,22 @@ class AppointmentControl:
         """
         return self.model.get_appointments()
 
-    def create_appointment(self, appointment: Appointment | dict) -> None:
+    def create_appointment(
+        self, appointment: Appointment, customer: Customer | None = None
+    ) -> None:
         """
         Προσθέτει καινούρια εγγραφή στο table Appointments
         """
-        # TODO Η υλοποίηση είναι ενδεικτική. Θέλουμε να υποστηρίζει
-        # και Appointment Class και dictionary ως παράμετρο
+        # TODO Η υλοποίηση είναι ενδεικτική. Ότι έχει να κάνει με πελάτες
+        # πρέπει να εκτελεστεί από το customer control
 
-        if not self.validate_appointment(appointment):
-            raise ValueError
-
-        if isinstance(appointment, Appointment):
-            self.model.add_appointment(appointment)
+        if customer:
+            id = CustomerModel().add_customer(customer)
         else:
-            raise NotImplementedError
+            id = None
+
+        appointment.customer_id = id
+        self.model.add_appointment(appointment)
 
     def delete_appointment(self, appointment: Appointment | dict | int) -> bool:
         """

@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .session import Base
+from .session import Base, SessionLocal
 from . import appointment
+from ..controller.logging import Logger
+
+logger = Logger("customer-model")
 
 
 class Customer(Base):
@@ -34,3 +37,20 @@ class Customer(Base):
 
     def get_appointments(self) -> list[appointment.Appointment]:
         return self.appointments
+
+
+class CustomerModel:
+    # TODO more functionality, error checking etc
+    def add_customer(self, customer: Customer) -> int:
+        with SessionLocal() as session:
+            session.add(customer)
+            session.commit()
+
+            customer_with_id = (
+                session.query(Customer).filter_by(email=customer.email).first()
+            )
+
+            if customer_with_id is None:
+                logger.log_error("Failed to retrieve customer id after insertion")
+                raise Exception(f"DB Error on {customer}")
+            return customer_with_id.id

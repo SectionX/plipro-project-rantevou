@@ -37,7 +37,7 @@ class SidePanel(ttk.Frame):
         SidePanel.update_data("self", self)
         self.side_views = {
             "alert": AlertsView(self),
-            "appointment": AppointmentView(self),
+            "appointments": AppointmentView(self),
             "search": SearchResultsView(self),
             "edit": EditAppointmentView(self),
             "add": AddAppointmentView(self),
@@ -108,14 +108,65 @@ class SideView(ttk.Frame):
         btnframe.pack(side=tk.BOTTOM, fill="x")
         button = ttk.Button(
             btnframe,
-            text="Back",
+            text="Go to Alerts",
             command=lambda: SidePanel.select_view("alert"),
         )
         button.pack(side=tk.RIGHT)
 
 
+class AppointmentViewButton(ttk.Button):
+    appointment: Appointment | None
+
+    def __init__(self, master, *args, appointment: Appointment | None = None, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.appointment = appointment
+        if self.appointment:
+            self.config(text=str(self.appointment.date), command=self.edit_appointment)
+        else:
+            self.config(text="+", command=self.add_appointment)
+
+    def add_appointment(self):
+        SidePanel.select_view(
+            "add", caller="appointments", data={"appointment": self.appointment}
+        )
+
+    def edit_appointment(self):
+        SidePanel.select_view(
+            "edit", caller="appointments", data={"appointment": self.appointment}
+        )
+
+
 class AppointmentView(SideView):
-    name: str = "appointment"
+    name: str = "appointments"
+    add_button: ttk.Button
+    edit_button: ttk.Button
+    caller_data: list[Appointment]
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.name = self.__class__.name
+        self.main_frame = ttk.Frame(self)
+        self.set_title("Ραντεβού")
+        self.main_frame.pack(fill="both", expand=True)
+        self.add_back_btn(self)
+
+    def update_content(self):
+        buttons = list(self.main_frame.children.values())
+        while buttons:
+            button = buttons.pop()
+            button.destroy()
+
+        caller_data = SidePanel.fetch_data("caller_data")
+        try:
+            if caller_data:
+                for appointment in caller_data:
+                    AppointmentViewButton(
+                        self.main_frame, appointment=appointment
+                    ).pack(fill="x")
+        except Exception as e:
+            logger.log_warn(f"Error with caller's data: {str(e)}")
+
+        AppointmentViewButton(self.main_frame, appointment=None).pack(fill="x")
 
 
 class AlertRow(ttk.Frame):
@@ -319,23 +370,6 @@ class EditAppointmentView(SideView):
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
         self.save_button.pack()
 
-    # def edit(self):
-    #     date = datetime.now().replace(
-    #         day=int(self.field_day.get()),
-    #         hour=int(self.field_hour.get()),
-    #         minute=int(self.field_minute.get() or 0),
-    #         second=0,
-    #         microsecond=0,
-    #     )
-    #     customer_input = self.field_customer.get()
-    #     if customer_input:
-    #         customer_id = int(customer_input)
-    #     else:
-    #         customer_id = None
-    #     ac.create_appointment(Appointment(date=date, customer_id=customer_id))
-    #     print("Added", date)
-    #     SidePanel.select_view("alert")
-
     def update_content(self):
         self.reset()
         caller_data = SidePanel.fetch_data("caller_data")
@@ -344,11 +378,15 @@ class EditAppointmentView(SideView):
             return
 
         self.appointment = caller_data["appointment"]
-        self.customer = caller_data["customer"]
-
         if self.appointment is None:
             logger.log_warn("Failed to retrieve appointment data")
-            return
+            raise ValueError
+
+        try:
+            self.customer = caller_data["customer"]
+        except:
+            logger.log_warn("Failed to retrieve customer data, querying database...")
+            self.customer = self.appointment.customer
 
         self.app_entry_date.insert(0, str(self.appointment.date))
         self.app_entry_duration.insert(0, str(self.appointment.duration))
@@ -366,6 +404,8 @@ class EditAppointmentView(SideView):
             self.cus_entry_email.insert(0, self.customer.email)
 
     def save(self):
+        # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
+        # βάση δεδομένων
         new_appointment = Appointment(
             date=self.app_entry_date.get(),
             duration=self.app_entry_duration.get(),
@@ -377,11 +417,28 @@ class EditAppointmentView(SideView):
             phone=self.cus_entry_phone.get(),
             email=self.cus_entry_email.get(),
         )
+        print(new_appointment, new_customer)
 
     def reset(self):
         for k, v in self.__dict__.items():
             if isinstance(v, ttk.Entry):
                 v.delete(0, tk.END)
+
+
+class EntryWithPlaceholder(ttk.Entry):
+
+    def __init__(self, master, placeholder: str, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.placeholder = placeholder
+        self.bind("<Button-1>", lambda x: self.clear())
+
+    def put_placeholder(self):
+        self.insert(0, self.placeholder)
+
+    def clear(self):
+        text = self.get()
+        if text == self.placeholder:
+            self.delete(0, tk.END)
 
 
 class AddAppointmentView(SideView):
@@ -399,57 +456,55 @@ class AddAppointmentView(SideView):
         self.main_frame.pack(fill="both", expand=True)
         self.add_back_btn(self)
 
-        self.day_frame = ttk.Frame(self)
-        self.hour_frame = ttk.Frame(self)
-        self.minute_frame = ttk.Frame(self)
-        self.customer_frame = ttk.Frame(self)
-        self.day_frame.pack()
-        self.hour_frame.pack()
-        self.minute_frame.pack()
-        self.customer_frame.pack()
+        self.appointment = None
+        self.customer = None
 
-        self.day_label = ttk.Label(self.day_frame, text="Ημέρα:")
-        self.hour_label = ttk.Label(self.hour_frame, text="Ώρα:")
-        self.minute_label = ttk.Label(self.minute_frame, text="Λεπτά:")
-        self.customer_label = ttk.Label(self.customer_frame, text="Πελάτης:")
-
-        self.day_label.pack(side=tk.LEFT, fill="x")
-        self.hour_label.pack(side=tk.LEFT, fill="x")
-        self.minute_label.pack(side=tk.LEFT, fill="x")
-        self.customer_label.pack(side=tk.LEFT, fill="x")
-
-        self.field_day = ttk.Entry(self.day_frame)
-        self.field_hour = ttk.Entry(self.hour_frame)
-        self.field_minute = ttk.Entry(self.minute_frame)
-        self.field_customer = ttk.Entry(self.customer_frame)
-
-        self.field_day.pack(side=tk.RIGHT, fill="x")
-        self.field_hour.pack(side=tk.RIGHT, fill="x")
-        self.field_minute.pack(side=tk.RIGHT, fill="x")
-        self.field_customer.pack(side=tk.RIGHT, fill="x")
-
-        self.add_button = tk.Button(self, text="Προσθήκη", command=self.add)
-        self.add_button.pack()
-
-    def add(self):
-        date = datetime.now().replace(
-            day=int(self.field_day.get()),
-            hour=int(self.field_hour.get()),
-            minute=int(self.field_minute.get() or 0),
-            second=0,
-            microsecond=0,
+        self.app_entry_date = EntryWithPlaceholder(self.main_frame, placeholder="date")
+        self.app_entry_date.pack(fill="x")
+        self.app_entry_duration = EntryWithPlaceholder(
+            self.main_frame, placeholder="duration"
         )
-        customer_input = self.field_customer.get()
-        if customer_input:
-            customer_id = int(customer_input)
-        else:
-            customer_id = None
-        ac.create_appointment(Appointment(date=date, customer_id=customer_id))
-        print("Added", date)
-        SidePanel.select_view("alert")
+        self.app_entry_duration.pack(fill="x")
+        self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
+        self.cus_entry_name.pack(fill="x")
+        self.cus_entry_surname = EntryWithPlaceholder(
+            self.main_frame, placeholder="surname"
+        )
+        self.cus_entry_surname.pack(fill="x")
+        self.cus_entry_phone = EntryWithPlaceholder(
+            self.main_frame, placeholder="phone number"
+        )
+        self.cus_entry_phone.pack(fill="x")
+        self.cus_entry_email = EntryWithPlaceholder(
+            self.main_frame, placeholder="email address"
+        )
+        self.cus_entry_email.pack(fill="x")
+        self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
+        self.save_button.pack()
 
     def update_content(self):
+        self.reset()
+
+    def save(self):
+        # TODO -> Make it save the data to db
+        print(
+            self.app_entry_date.get(),
+            self.app_entry_duration.get(),
+            self.cus_entry_name.get(),
+            self.cus_entry_surname.get(),
+            self.cus_entry_phone.get(),
+            self.cus_entry_email.get(),
+            sep="\n",
+        )
+
+    def populate_customer(self):
         pass
+
+    def reset(self):
+        for k, v in self.__dict__.items():
+            if isinstance(v, EntryWithPlaceholder):
+                v.delete(0, tk.END)
+                v.put_placeholder()
 
 
 class SearchBar(ttk.Frame):
@@ -478,34 +533,3 @@ class SearchBar(ttk.Frame):
         )
         SidePanel.update_data("search", self.search_results)
         SidePanel.data_pipeline["self"].select_view("search")
-
-
-# class AppointmentButton(ttk.Button, SubscriberInterface):
-#     pass
-
-
-# class AppointmentAddButton(AppointmentButton):
-#     cancel: bool
-
-#     def __init__(self, root, *args, **kwargs):
-#         super().__init__(root, *args, **kwargs)
-#         self.config(text="+")
-#         self.cancel = False
-
-#     def add_appointment(self):
-#         ...
-#         if self.cancel:
-#             self.cancel = False
-#             return
-#         raise NotImplementedError
-
-
-# class AppointmentEditButton(AppointmentButton):
-#     cancel: bool
-
-#     def edit_appointment(self):
-#         ...
-#         if self.cancel:
-#             self.cancel = False
-#             return
-#         raise NotImplementedError

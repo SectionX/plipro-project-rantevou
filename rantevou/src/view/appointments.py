@@ -173,7 +173,7 @@ class GridVerticalHeader(ttk.Label):
 
 class GridColumn(ttk.Frame):
     header: GridHeader
-    rows: list[GridRow]
+    rows: list[GridCell]
     start_date: datetime
     end_date: datetime
     period_duration: timedelta
@@ -199,7 +199,7 @@ class GridColumn(ttk.Frame):
         start = start_date
         i = 0
         while start < end_date:
-            self.rows.append(GridRow(self, start_index + i, start, period_duration))
+            self.rows.append(GridCell(self, start_index + i, start, period_duration))
             i += 1
             start += period_duration
 
@@ -218,7 +218,7 @@ class GridColumn(ttk.Frame):
             row.move_right()
 
 
-class GridRow(ttk.Frame, SubscriberInterface):
+class GridCell(ttk.Frame, SubscriberInterface):
     group_index: int
     period_start: datetime
     period_duration: timedelta
@@ -242,6 +242,7 @@ class GridRow(ttk.Frame, SubscriberInterface):
         self.period_end = period_start + period_duration
         self.text = ttk.Label(self, style="primary.TLabel")
         self.text.pack(fill="both", expand=True, padx=3, pady=3)
+        self.text.bind("<Button-1>", lambda x: self.show_in_sidepanel())
         self.draw()
 
     @property
@@ -273,3 +274,6 @@ class GridRow(ttk.Frame, SubscriberInterface):
             self.period_start, AppointmentsTab.start_date, self.period_duration
         )
         self.draw()
+
+    def show_in_sidepanel(self):
+        SidePanel.select_view(view="appointments", caller=self, data=self.appointments)
