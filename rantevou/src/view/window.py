@@ -16,6 +16,7 @@ from .appointments import AppointmentsTab
 from .customers import Customers
 from .statistics import Statistics
 from .alerts import Alerts
+from .sidepanel import SidePanel
 
 # standard colors
 
@@ -37,17 +38,25 @@ class Notebook(ttk.Notebook):
 class Window(tk.Tk):
 
     def __init__(
-        self, title: str = "Appointments App", width: int = 1200, height: int = 600
+        self, title: str = "Appointments App", width: int = 1400, height: int = 600
     ):
         super().__init__()
         self.geometry(f"{width}x{height}")
+        self.config(background=sbackground)
         self.title(title)
         self.tabs = Notebook(self)
-        self.tabs.pack(fill="both", expand=True)
         self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
         self.tabs.add(Customers(self.tabs), text="Customers")
         self.tabs.add(Statistics(self.tabs), text="Statistics")
-        self.tabs.add(Alerts(self.tabs), text="Alerts")
+
+        self.side_panel = SidePanel(self, style="primary.TFrame", width=200)
+
+        self.grid_rowconfigure(0, weight=4)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1, minsize=200)
+
+        self.tabs.grid(column=0, row=0, sticky="nsew")
+        self.side_panel.grid(column=1, row=0, stick="nse", pady=10, padx=5)
 
         style = ttk.Style(self)
 

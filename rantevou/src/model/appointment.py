@@ -137,11 +137,10 @@ class AppointmentModel:
     def update_appointment(self, new: Appointment):
         target = None
 
-        old = self.session.query(Appointment).filter_by(id=new.id).first()
+        old = self.session.query(Appointment).filter_by(date=new.date).first()
         if old:
             self.replace_in_cache(old, new)
             self.appointments.append(new)
-            old.id = new.id
             old.date = new.date
             old.is_alerted = new.is_alerted
             old.duration = new.duration

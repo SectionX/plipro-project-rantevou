@@ -46,7 +46,11 @@ class AppointmentControl:
 
         if not self.validate_appointment(appointment):
             raise ValueError
-        self.model.add_appointment(appointment)
+
+        if isinstance(appointment, Appointment):
+            self.model.add_appointment(appointment)
+        else:
+            raise NotImplementedError
 
     def delete_appointment(self, appointment: Appointment | dict | int) -> bool:
         """

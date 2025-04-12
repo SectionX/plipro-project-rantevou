@@ -13,7 +13,6 @@
 
 import tkinter as tk
 from tkinter import ttk
-from tkinter.font import Font
 from tkinter.messagebox import showerror, showinfo, askyesno
 from typing import Iterator
 
@@ -125,7 +124,12 @@ class Customers(AppFrame):
         # θέσεως.
         if self.searchbar != self.searchbar.focus_get():
             self.searchbar.focus()
-            self.searchbar.insert("end", event.char)
+            if event is None:
+                char = ""
+            else:
+                char = event.char
+
+            self.searchbar.insert("end", char)
 
         # Αναζήτηση
         self.tree.delete(*self.tree.get_children())
