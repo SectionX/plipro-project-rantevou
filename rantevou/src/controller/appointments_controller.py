@@ -115,9 +115,6 @@ class AppointmentControl:
     def add_subscription(self, subscriber):
         self.model.add_subscriber(subscriber)
 
-    def update_subscribers(self):
-        self.model.update_subscribers()
-
     def get_time_between_appointments(
         self,
         start_date: datetime | None = None,

@@ -55,7 +55,7 @@ class Mailer:
         # TODO πρέπει να γίνει σωστό format του appointment.date
         # TODO επίσης πρέπει να γραφτεί καλύτερο μήνυμα email
         for appointment in appointments:
-            customer = appointment.get_customer()
+            customer = appointment.customer
             if customer is None:
                 logger.log_warn(
                     f"No customer is associated with appointment {appointment.id}.{appointment.date}"

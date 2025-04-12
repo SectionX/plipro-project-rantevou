@@ -26,7 +26,7 @@ def generate_fake_customer_data():
 
     fk = Faker("el-GR")
 
-    for i in range(30):
+    for i in range(300):
         yield Customer(
             name=fk.first_name(),
             surname=fk.last_name(),
@@ -41,15 +41,17 @@ def generate_fake_appointment_data():
     from .appointment import Appointment
 
     start_date = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-    for i in range(30):
+    for i in range(300):
         start_date = start_date + timedelta(minutes=5 * randint(4, 20))
         if start_date.hour > 17:
-            start_date = start_date.replace(day=start_date.day + 1, hour=9, minute=0)
+            start_date = start_date.replace(
+                day=start_date.day, hour=9, minute=0
+            ) + timedelta(days=1)
 
         if i % 5 == 0:
             customer_id = None
         else:
-            customer_id = randint(1, 30)
+            customer_id = randint(1, 300)
 
         is_alerted = bool(randint(0, 1))
         yield Appointment(

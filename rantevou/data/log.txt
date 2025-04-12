@@ -1,0 +1,46 @@
+INFO - [2025-04-11 19:47:08]: Starting Rantevou - main
+INFO - [2025-04-11 19:48:21]: Starting Rantevou - main
+INFO - [2025-04-11 19:52:02]: Starting Rantevou - main
+INFO - [2025-04-11 19:54:22]: Starting Rantevou - main
+INFO - [2025-04-11 20:02:22]: Starting Rantevou - main
+INFO - [2025-04-11 20:09:44]: Starting Rantevou - main
+INFO - [2025-04-11 20:10:30]: Starting Rantevou - main
+INFO - [2025-04-11 20:11:32]: Starting Rantevou - main
+INFO - [2025-04-11 21:22:55]: Starting Rantevou - main
+INFO - [2025-04-12 06:38:12]: Starting Rantevou - main
+INFO - [2025-04-12 06:39:14]: Starting Rantevou - main
+INFO - [2025-04-12 06:55:59]: Starting Rantevou - main
+INFO - [2025-04-12 07:20:32]: Starting Rantevou - main
+INFO - [2025-04-12 07:20:59]: Starting Rantevou - main
+INFO - [2025-04-12 07:21:16]: Sending emails to 1 recipients - Mailer
+INFO - [2025-04-12 07:21:16]: Debug mode enabled, emails won't reach the recipient - Mailer
+INFO - [2025-04-12 07:21:16]: Connecting to smtp - Mailer
+INFO - [2025-04-12 07:27:32]: Starting Rantevou - main
+INFO - [2025-04-12 07:27:36]: Sending emails to 1 recipients - Mailer
+INFO - [2025-04-12 07:27:36]: Debug mode enabled, emails won't reach the recipient - Mailer
+INFO - [2025-04-12 07:27:36]: Connecting to smtp - Mailer
+INFO - [2025-04-12 07:27:36]: Mailing to kostas79@example.com - Mailer
+INFO - [2025-04-12 07:27:36]: Γεια σου Φεβρωνία!
+
+Μην ξεχάσεις το ραντεβουδάκι σου στις 12/04 και ώρα 09:00!
+ - Mailer
+INFO - [2025-04-12 07:27:45]: Sending emails to 1 recipients - Mailer
+INFO - [2025-04-12 07:27:45]: Debug mode enabled, emails won't reach the recipient - Mailer
+INFO - [2025-04-12 07:27:45]: Connecting to smtp - Mailer
+INFO - [2025-04-12 07:27:45]: Mailing to kostas79@example.com - Mailer
+INFO - [2025-04-12 07:27:45]: Γεια σου Φεβρωνία!
+
+Μην ξεχάσεις το ραντεβουδάκι σου στις 12/04 και ώρα 09:00!
+ - Mailer
+INFO - [2025-04-12 07:28:38]: Starting Rantevou - main
+INFO - [2025-04-12 07:29:41]: Starting Rantevou - main
+INFO - [2025-04-12 07:32:21]: Starting Rantevou - main
+INFO - [2025-04-12 07:48:09]: Starting Rantevou - main
+INFO - [2025-04-12 07:48:17]: Sending emails to 1 recipients - Mailer
+INFO - [2025-04-12 07:48:17]: Debug mode enabled, emails won't reach the recipient - Mailer
+INFO - [2025-04-12 07:48:17]: Connecting to smtp - Mailer
+INFO - [2025-04-12 07:48:17]: Mailing to orfanakis.ermioni@example.com - Mailer
+INFO - [2025-04-12 07:48:17]: Γεια σου Αριστομένης!
+
+Μην ξεχάσεις το ραντεβουδάκι σου στις 12/04 και ώρα 14:20!
+ - Mailer

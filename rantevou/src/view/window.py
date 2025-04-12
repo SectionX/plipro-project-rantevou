@@ -37,7 +37,7 @@ class Notebook(ttk.Notebook):
 class Window(tk.Tk):
 
     def __init__(
-        self, title: str = "Appointments App", width: int = 1100, height: int = 600
+        self, title: str = "Appointments App", width: int = 1200, height: int = 600
     ):
         super().__init__()
         self.geometry(f"{width}x{height}")
