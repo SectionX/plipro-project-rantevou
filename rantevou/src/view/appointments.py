@@ -10,13 +10,15 @@ from .abstract_views import AppFrame
 from .sidepanel import SidePanel
 
 from ..controller.appointments_controller import AppointmentControl
+from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller import get_config
 
-from ..model.types import Customer, Appointment
+from ..model.types import Appointment
 
 logger = Logger("AppointmentsTab")
 ac = AppointmentControl()
+cc = CustomerControl()
 cfg: dict[str, Any] = (
     get_config()
 )  # working_hours, opening_hour, rows, columns, minimum appointment duration
@@ -26,6 +28,7 @@ cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 class SubscriberInterface:
     def __init__(self):
         ac.add_subscription(self)
+        cc.add_subscription(self)
 
     def subscriber_update(self):
         raise NotImplementedError
@@ -69,7 +72,6 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
 
     def subscriber_update(self):
         AppointmentsTab.appointments = ac.get_appointments()
-        print(*AppointmentsTab.appointments, sep="\n")
         AppointmentsTab.appointment_groups = ac.get_appointments_grouped_in_periods(
             AppointmentsTab.start_date, AppointmentsTab.group_period
         )
@@ -232,8 +234,8 @@ class GridCell(ttk.Frame, SubscriberInterface):
         *args,
         **kwargs,
     ):
-        SubscriberInterface.__init__(self)
         ttk.Frame.__init__(self, root, *args, **kwargs)
+        SubscriberInterface.__init__(self)
         self.config(style="primary.TFrame")
 
         self.group_index = appointment_group_index

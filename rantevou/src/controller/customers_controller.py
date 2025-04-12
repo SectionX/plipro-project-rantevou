@@ -43,7 +43,7 @@ class CustomerControl:
     def get_customer_by_email(self, email: str) -> Customer | None:
         return self.model.get_customer_by_email(email)
 
-    def add_subscriber(self, node):
+    def add_subscription(self, node):
         self.model.add_subscriber(node)
 
     def get_customer_fields(self):

@@ -46,6 +46,7 @@ logger = Logger("sidepanel")
 class SubscriberInterface:
     def __init__(self):
         ac.add_subscription(self)
+        cc.add_subscription(self)
 
     def subscriber_update(self):
         raise NotImplementedError
@@ -106,6 +107,10 @@ class SidePanel(ttk.Frame):
 
     def _select_view(self, view: str | None = None, caller=None, data=None):
         SidePanel.update_data("previous_view", self.active_view.name)
+        SidePanel.update_data("previous_caller", SidePanel.fetch_data("caller"))
+        SidePanel.update_data(
+            "previous_caller_data", SidePanel.fetch_data("caller_data")
+        )
         SidePanel.update_data("caller", caller)
         SidePanel.update_data("caller_data", data)
 
@@ -209,14 +214,18 @@ class AppointmentViewButton(ttk.Button):
             self.config(text="+", command=self.add_appointment)
 
     def add_appointment(self):
-        SidePanel.select_view(
-            "add", caller="appointments", data={"appointment": self.appointment}
-        )
+        if self.appointment is None:
+            date = datetime.now()
+        else:
+            date = self.appointment.date
+        SidePanel.select_view("add", caller="appointments", data=[date, 20])
 
     def edit_appointment(self):
-        SidePanel.select_view(
-            "edit", caller="appointments", data={"appointment": self.appointment}
-        )
+        if self.appointment is None:
+            date = datetime.now()
+        else:
+            date = self.appointment.date
+        SidePanel.select_view("edit", caller="appointments", data=[date, 20])
 
 
 class AppointmentView(SideView):
@@ -240,6 +249,7 @@ class AppointmentView(SideView):
             button.destroy()
 
         caller_data = SidePanel.fetch_data("caller_data")
+        logger.log_info(f"Showing appointment data {caller_data}")
         try:
             if caller_data:
                 for appointment in caller_data:
@@ -331,7 +341,9 @@ class AlertRow(ttk.Frame):
     def send_email(self):
         if self.appointment:
             if self.customer and self.customer.email:
-                mailer.send_email([self.appointment])
+                mailer.send_email(
+                    [self.appointment], debug=True
+                )  # TODO change for live
             else:
                 showerror("Customer doesn't have an email")
 
@@ -349,8 +361,8 @@ class AlertsView(SideView, SubscriberInterface):
     appointments: list[Appointment]
 
     def __init__(self, root, *args, **kwargs):
-        SubscriberInterface.__init__(self)
         super().__init__(root, *args, **kwargs)
+        SubscriberInterface.__init__(self)
         self.name = self.__class__.name
         self.set_title("Ειδοποιήσεις")
         self.appointments = []
@@ -387,6 +399,18 @@ class AlertsView(SideView, SubscriberInterface):
         self.update_content()
 
 
+class SearchResult(ttk.Button):
+
+    def __init__(self, master, period: datetime, duration: int, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.config(command=self.open_add_screen)
+        self.period = period
+        self.duration = duration
+
+    def open_add_screen(self):
+        SidePanel.select_view("add", caller="search", data=[self.period, self.duration])
+
+
 class SearchResultsView(SideView):
     name: str = "search"
     periods: list[tuple[datetime, timedelta]]
@@ -402,27 +426,43 @@ class SearchResultsView(SideView):
 
     def update_content(self):
         print("content")
-        self.periods = SidePanel.data_pipeline["search"]
+        periods = SidePanel.fetch_data("search")
+        user_input = SidePanel.fetch_data("caller_data")
+
+        if periods is None:
+            return
+
+        if user_input is None:
+            self.user_input = 20
+
+        if isinstance(user_input, str):
+            try:
+                self.user_input = int(user_input)
+            except:
+                self.user_input = 20
+
+        if isinstance(user_input, int):
+            self.user_input = user_input
+
+        self.periods = periods
+
         self.result_frame.destroy()
         self.result_frame = ttk.Frame(self)
-        for period in self.periods:
-            start = period[0].strftime("%d/%m: %H:%M")
-            duration = period[1].total_seconds() // 60
-            ttk.Button(
+        for period, duration in self.periods:
+            start = period.strftime("%d/%m: %H:%M")
+            duration_mins = int(duration.total_seconds() // 60)
+            SearchResult(
                 self.result_frame,
-                text=f"{start}-{duration} λεπτά",
-                command=lambda: self.open_add_screen(period),
+                period=period,
+                duration=self.user_input,
+                text=f"{start}-{duration_mins} λεπτά",
             ).pack(fill="x")
         self.result_frame.pack(fill="x")
-
-    def open_add_screen(self, period):
-        SidePanel.update_data("add_assist_date", period[0])
-        SidePanel.select_view("add")
 
 
 class EditAppointmentView(SideView):
     name: str = "edit"
-    appointment: Appointment | None
+    appointment: Appointment
     customer: Customer | None
 
     def __init__(self, root, *args, **kwargs):
@@ -432,15 +472,21 @@ class EditAppointmentView(SideView):
         self.main_frame.pack(fill="both", expand=True)
         self.add_back_btn(self)
 
-        self.appointment = None
+        self.appointment = Appointment()
         self.customer = None
 
-        self.app_entry_date = ttk.Entry(self.main_frame)
-        self.app_entry_date.pack(fill="x")
+        self.app_entry_year = ttk.Entry(self.main_frame)
+        self.app_entry_year.pack(fill="x")
+        self.app_entry_month = ttk.Entry(self.main_frame)
+        self.app_entry_month.pack(fill="x")
+        self.app_entry_day = ttk.Entry(self.main_frame)
+        self.app_entry_day.pack(fill="x")
+        self.app_entry_hour = ttk.Entry(self.main_frame)
+        self.app_entry_hour.pack(fill="x")
+        self.app_entry_minute = ttk.Entry(self.main_frame)
+        self.app_entry_minute.pack(fill="x")
         self.app_entry_duration = ttk.Entry(self.main_frame)
         self.app_entry_duration.pack(fill="x")
-        self.app_entry_is_alerted = ttk.Entry(self.main_frame)
-        self.app_entry_is_alerted.pack(fill="x")
         self.cus_entry_name = ttk.Entry(self.main_frame)
         self.cus_entry_name.pack(fill="x")
         self.cus_entry_surname = ttk.Entry(self.main_frame)
@@ -455,6 +501,8 @@ class EditAppointmentView(SideView):
     def update_content(self):
         self.reset()
         caller_data = SidePanel.fetch_data("caller_data")
+        logger.log_info(f"Showing data {caller_data} for editing")
+
         if caller_data is None:
             logger.log_warn("Failed to retrieve appointment data")
             return
@@ -464,15 +512,17 @@ class EditAppointmentView(SideView):
             logger.log_warn("Failed to retrieve appointment data")
             raise ValueError
 
-        try:
-            self.customer = caller_data["customer"]
-        except:
-            logger.log_warn("Failed to retrieve customer data, querying database...")
-            self.customer = self.appointment.customer
+        self.customer = self.appointment.customer
+        logger.log_info(f"Showing data {self.customer} for editing")
 
-        self.app_entry_date.insert(0, str(self.appointment.date))
+        date = self.appointment.date
+
+        self.app_entry_year.insert(0, str(date.year))
+        self.app_entry_month.insert(0, str(date.month))
+        self.app_entry_day.insert(0, str(date.day))
+        self.app_entry_hour.insert(0, str(date.hour))
+        self.app_entry_minute.insert(0, str(date.minute))
         self.app_entry_duration.insert(0, str(self.appointment.duration))
-        self.app_entry_is_alerted.insert(0, str(self.appointment.is_alerted))
 
         if self.customer is None:
             self.cus_entry_name.insert(0, "Customer name")
@@ -488,18 +538,42 @@ class EditAppointmentView(SideView):
     def save(self):
         # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
         # βάση δεδομένων
-        new_appointment = Appointment(
-            date=self.app_entry_date.get(),
-            duration=self.app_entry_duration.get(),
-            is_alerted=self.app_entry_is_alerted.get(),
+
+        date = datetime(
+            year=int(self.app_entry_year.get()),
+            month=int(self.app_entry_month.get()),
+            day=int(self.app_entry_day.get()),
+            hour=int(self.app_entry_hour.get()),
+            minute=int(self.app_entry_minute.get()),
         )
-        new_customer = Customer(
+
+        new_appointment = Appointment(
+            id=self.appointment.id,
+            date=date,
+            duration=self.app_entry_duration.get(),
+            is_alerted=self.appointment.is_alerted,
+            customer_id=self.appointment.customer_id,
+        )
+        new_customer: Customer = Customer(
             name=self.cus_entry_name.get(),
             surname=self.cus_entry_surname.get(),
             phone=self.cus_entry_phone.get(),
             email=self.cus_entry_email.get(),
         )
-        print(new_appointment, new_customer)
+
+        if (
+            new_customer.email == "Customer email"
+            and new_customer.name == "Customer name"
+        ):
+            result = ac.update_appointment(self.appointment, new_appointment)
+        else:
+            result = ac.update_appointment(
+                self.appointment, new_appointment, new_customer
+            )
+
+        if not result:
+            showerror("Something went wrong...")
+            self.update_content()
 
     def reset(self):
         for k, v in self.__dict__.items():
@@ -541,10 +615,28 @@ class AddAppointmentView(SideView):
         self.appointment = None
         self.customer = None
 
-        self.app_entry_date = EntryWithPlaceholder(self.main_frame, placeholder="date")
-        self.app_entry_date.pack(fill="x")
+        year, month, day, *_ = self.date_to_string(datetime.now())
+        duration = "20"  # TODO να έρχεται από το config file
+
+        self.app_entry_year = EntryWithPlaceholder(self.main_frame, placeholder=year)
+        self.app_entry_year.pack(fill="x")
+
+        self.app_entry_month = EntryWithPlaceholder(self.main_frame, placeholder=month)
+        self.app_entry_month.pack(fill="x")
+
+        self.app_entry_day = EntryWithPlaceholder(self.main_frame, placeholder=day)
+        self.app_entry_day.pack(fill="x")
+
+        self.app_entry_hour = EntryWithPlaceholder(self.main_frame, placeholder="hour")
+        self.app_entry_hour.pack(fill="x")
+
+        self.app_entry_minutes = EntryWithPlaceholder(
+            self.main_frame, placeholder="minutes"
+        )
+        self.app_entry_minutes.pack(fill="x")
+
         self.app_entry_duration = EntryWithPlaceholder(
-            self.main_frame, placeholder="duration"
+            self.main_frame, placeholder=duration
         )
         self.app_entry_duration.pack(fill="x")
         self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
@@ -564,20 +656,57 @@ class AddAppointmentView(SideView):
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
         self.save_button.pack()
 
+    def date_to_string(self, date: datetime) -> list[str]:
+        datestring = date.strftime("%Y_%m_%d_%H_%M_%S")
+        return datestring.split("_")
+
     def update_content(self):
+        data = SidePanel.fetch_data("caller_data")
+        logger.log_info(f"Showing appointment creation panel with data {data}")
+        if data is None or data[0] is None:
+            self.reset()
+            return
+
+        if not isinstance(data[0], datetime):
+            self.reset()
+            return
+
+        if not isinstance(data[1], int):
+            duration = "20"
+        else:
+            duration = str(data[1])
+
+        year, month, day, hour, minute, *_ = self.date_to_string(data[0])
+        self.app_entry_year.placeholder = year
+        self.app_entry_month.placeholder = month
+        self.app_entry_day.placeholder = day
+        self.app_entry_hour.placeholder = hour
+        self.app_entry_minutes.placeholder = minute
+        self.app_entry_duration.placeholder = duration
         self.reset()
 
     def save(self):
         # TODO -> Make it save the data to db
-        print(
-            self.app_entry_date.get(),
-            self.app_entry_duration.get(),
-            self.cus_entry_name.get(),
-            self.cus_entry_surname.get(),
-            self.cus_entry_phone.get(),
-            self.cus_entry_email.get(),
-            sep="\n",
+
+        date = datetime(
+            year=int(self.app_entry_year.get()),
+            month=int(self.app_entry_month.get()),
+            day=int(self.app_entry_day.get()),
+            hour=int(self.app_entry_hour.get()),
+            minute=int(self.app_entry_minutes.get()),
+            second=0,
+            microsecond=0,
         )
+        duration = int(self.app_entry_duration.get())
+
+        appointment = Appointment(date=date, duration=duration)
+        customer = Customer(
+            name=self.cus_entry_name.get(),
+            surname=self.cus_entry_surname.get(),
+            phone=self.cus_entry_phone.get(),
+            email=self.cus_entry_email.get(),
+        )
+        ac.create_appointment(appointment, customer)
 
     def populate_from_customer_tab(self):
         customer_data = SidePanel.fetch_data("customer_data")
@@ -631,7 +760,7 @@ class SearchBar(ttk.Frame):
             start_date=datetime.now(), minumum_free_period=self.duration
         )
         SidePanel.update_data("search", self.search_results)
-        SidePanel.data_pipeline["self"].select_view("search")
+        SidePanel.select_view("search", caller=self, data=int(self.entry.get()))
 
 
 class AddCustomerView(SideView):

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import NamedTuple
 from .logging import Logger
+from tkinter import ttk
 from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
 
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
@@ -43,6 +44,7 @@ class AppointmentControl:
         """
         Επιστρέφει όλες τις εγγραφές από το table Appointments
         """
+        logger.log_info("Requesting list of appointments")
         return self.model.get_appointments()
 
     def create_appointment(
@@ -51,21 +53,32 @@ class AppointmentControl:
         """
         Προσθέτει καινούρια εγγραφή στο table Appointments
         """
+        logger.log_info(
+            f"Requesting new appointment creation {appointment=}, {customer=}"
+        )
         # TODO Η υλοποίηση είναι ενδεικτική. Ότι έχει να κάνει με πελάτες
         # πρέπει να εκτελεστεί από το customer control
 
-        if customer:
-            id = CustomerModel().add_customer(customer)
-        else:
-            id = None
+        if customer is None:
+            appointment.customer_id = None
+            self.model.add_appointment(appointment)
+            return
 
-        appointment.customer_id = id
+        cmodel = CustomerModel()
+        existing_customer = cmodel.get_customer_by_email(customer.email)
+        if existing_customer is None:
+            id = cmodel.add_customer(customer)
+            appointment.customer_id = id
+        else:
+            appointment.customer_id = existing_customer.id
+
         self.model.add_appointment(appointment)
 
     def delete_appointment(self, appointment: Appointment | dict | int) -> bool:
         """
         Σβήνει μια εγγραφή από το table Appointments
         """
+        logger.log_info(f"Requesting appointment deletion for {appointment=}")
         if isinstance(appointment, int):
             full_appointment = self.model.get_appointment_by_id(appointment)
             if full_appointment:
@@ -84,30 +97,59 @@ class AppointmentControl:
 
         return True
 
-    def update_appointment(self, appointment: Appointment | dict) -> bool:
+    def update_appointment(
+        self,
+        old_appointment: Appointment,
+        appointment: Appointment,
+        customer: Customer | None = None,
+    ) -> bool:
         """
         Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments
         """
-        if isinstance(appointment, dict):
-            try:
-                appointment = Appointment(**appointment)
-            except Exception as e:
-                logger.log_warn(str(e))
-                return False
+        logger.log_info(
+            f"Requesting appointment update for {appointment=}, {customer=}"
+        )
 
-        self.model.update_appointment(appointment)
-        return True
+        check = self.model.get_appointment_by_id(old_appointment.id)
+        if check is None:
+            logger.log_error("Cannot update non existing appointment")
+            return False
+
+        cmodel = CustomerModel()
+        try:
+            if customer:
+                old_customer = cmodel.get_customer_by_email(customer.email)
+                if old_customer is None:
+                    id = cmodel.add_customer(customer)
+                    appointment.customer_id = id
+                    self.model.update_appointment(old_appointment, appointment)
+                    return True
+
+                if (
+                    old_customer == customer
+                    and old_customer.id == appointment.customer_id
+                ):
+                    self.model.update_appointment(old_appointment, appointment)
+                    return True
+
+            self.model.update_appointment(old_appointment, appointment)
+            return True
+        except Exception as e:
+            logger.log_error(f"Failer to update appointment with error {str(e)}")
+            return False
 
     def get_appointment_by_id(self, id: int) -> Appointment | None:
         """
         Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
         """
+        logger.log_info(f"Requesting appointment by {id=}")
         return self.model.get_appointment_by_id(id)
 
     def get_appointment_by_date(self, date: datetime) -> Appointment | None:
         """
         Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
         """
+        logger.log_info(f"Requesting appointment by {date=}")
         return self.model.get_appointment_by_date(date)
 
     def validate_appointment(self, appointment: Appointment | dict) -> bool:
@@ -124,9 +166,13 @@ class AppointmentControl:
         start: datetime,
         period: timedelta,
     ):
+        logger.log_info(
+            f"Requesting model to split appointments in groups for {start=}, {period=}"
+        )
         return self.model.split_appointments_in_periods(period, start)
 
     def add_subscription(self, subscriber):
+        logger.log_info(f"Requesting subscription for {subscriber}")
         self.model.add_subscriber(subscriber)
 
     def get_time_between_appointments(
@@ -134,13 +180,19 @@ class AppointmentControl:
         start_date: datetime | None = None,
         minumum_free_period: timedelta | None = None,
     ) -> list[tuple[datetime, timedelta]]:
-
+        logger.log_info(
+            f"Requesting list of time between appointments for {start_date=}, {minumum_free_period=}"
+        )
         return self.model.get_time_between_appointments(start_date, minumum_free_period)
 
     def get_index_from_date(
         self, date: datetime, start_date: datetime, period_duration: timedelta
     ) -> int:
+        logger.log_info(
+            f"Requesting calculation of group index for {date=}, {start_date=}, {period_duration=}"
+        )
         return (date - start_date) // period_duration
 
     def get_appointments_from_to_date(self, start: datetime, end: datetime):
+        logger.log_info(f"Requesting query of appointments from {start} to {end}")
         return self.model.get_appointments_from_to_date(start, end)

@@ -9,15 +9,18 @@ from .abstract_views import AppFrame
 from .sidepanel import SidePanel, AddAppointmentView
 from ..model.types import Customer
 from ..controller.customers_controller import CustomerControl
+from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 
 cc = CustomerControl()
+ac = AppointmentControl()
 logger = Logger("customers-view")
 
 
 class SubscriberInterface:
     def __init__(self):
-        cc.add_subscriber(self)
+        ac.add_subscription(self)
+        cc.add_subscription(self)
 
     def subscriber_update(self):
         raise NotImplementedError

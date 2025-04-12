@@ -118,6 +118,7 @@ class AppointmentModel:
         Sort με βάση τον χρόνο επειδή είναι η πιο χρήσιμη
         πληροφορία αυτής της οντότητας.
         """
+        logger.log_info("Excecuting sorting of cached appointments")
         if list_:
             list_.sort(key=lambda x: x.date)
             return list_
@@ -126,6 +127,7 @@ class AppointmentModel:
             return self.appointments
 
     def add_appointment(self, appointment: Appointment, update: bool = True) -> int:
+        logger.log_info(f"Excecuting creation of new {appointment=}")
         self.session.add(appointment)
         self.session.commit()
         appointment_with_id = (
@@ -145,24 +147,21 @@ class AppointmentModel:
 
         return appointment_with_id.id
 
-    def update_appointment(self, new: Appointment):
-        target = None
-
-        old = self.session.query(Appointment).filter_by(date=new.date).first()
-        if old:
-            self.replace_in_cache(old, new)
-            self.appointments.append(new)
-            old.date = new.date
-            old.is_alerted = new.is_alerted
-            old.duration = new.duration
-            old.customer_id = new.customer_id
+    def update_appointment(self, old: Appointment, new: Appointment):
+        logger.log_info(f"Excecuting update of appointment={new}")
+        target: Appointment | None = None
+        target = self.session.query(Appointment).filter_by(date=old.date).first()
+        if target:
+            self.replace_in_cache(target, new)
+            target.date = new.date
+            target.duration = new.duration
+            target.customer_id = target.customer_id
         self.session.commit()
 
-        if target:
-            self.appointments[self.appointments.index(target)] = new
         self.update_subscribers()
 
     def delete_appointment(self, appointment: Appointment):
+        logger.log_info(f"Excecuting deletion of {appointment=}")
         self.session.delete(appointment)
         self.appointments.remove(appointment)
         self.sort()
@@ -172,6 +171,7 @@ class AppointmentModel:
         """
         Το μοντέλο είναι ρυθμισμένο να κρατάει τα δεδομένα στην μνήμη
         """
+        logger.log_info(f"Excecuting query of all appointments")
         if cached:
             return self.appointments
 
@@ -182,12 +182,14 @@ class AppointmentModel:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
+        logger.log_info(f"Excecuting query of appointment by id={appointment_id}")
         return self.session.query(Appointment).filter_by(id=appointment_id).first()
 
     def get_appointment_by_date(self, date: datetime) -> Appointment | None:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
+        logger.log_info(f"Excecuting query of appointment by {date=}")
         return self.session.query(Appointment).filter_by(date=date).first()
 
     def get_appointments_from_to_date(
@@ -196,6 +198,7 @@ class AppointmentModel:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
+        logger.log_info(f"Excecuting query from {from_date} to {to_date}")
         return (
             self.session.query(Appointment)
             .filter(Appointment.date >= from_date, Appointment.date < to_date)
@@ -207,12 +210,16 @@ class AppointmentModel:
         Απαραίτητο όλοι οι subscribers να υλοποιούν το subscriber
         interface
         """
+        logger.log_info(f"Adding {subscriber=}")
         self.subscribers.append(subscriber)
 
     def update_subscribers(self):
         """
         Ενημέρωση των subscribers
         """
+        logger.log_info(
+            f"Excecuting notification of {len(self.subscribers)} subscribers"
+        )
         for subscriber in self.subscribers:
             subscriber.subscriber_update()
 
@@ -224,6 +231,9 @@ class AppointmentModel:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
+        logger.log_info(
+            f"Excecuting query of split appointments by {period=} with start date={start}"
+        )
         if start is None:
             start = self.appointments[0].date
 
@@ -244,6 +254,7 @@ class AppointmentModel:
         Συνάρτηση συνήθους περίπτωσης, βοηθητική της
         split_appointments_in_periods
         """
+        logger.log_info(f"Excecuting calculation of group period index")
         if start is None:
             start = self.appointments[0].date
 
@@ -258,6 +269,7 @@ class AppointmentModel:
         Συνάρτηση συνήθους περίπτωσης. Λύνει την περίπτωση εύρεσης
         χρόνου μεταξύ των ραντεβού
         """
+        logger.log_info(f"Excecuting calculation of time between appointments")
         result: list[tuple[datetime, timedelta]] = []
 
         if start_date is None:
@@ -283,15 +295,27 @@ class AppointmentModel:
 
     def replace_in_cache(self, target, new):
         """
-        Συνάρτηση ενημέρωσης του cache
+        Συνάρτηση ενημέρωσης του cache.
+
+        !!! Σημαντική σημείωση πρέπει πρώτα να ανανεωθεί το ραντεβού
+        στην βάση δεδομένων και μετά να γίνει query ώστε να ανακτηθεί ξανά.
+        Είναι πρόβλημε με την sqlalchemy και αν δεν γίνει έτσι, χάνει την
+        σύνδεση με το table των πελατών, δημιουργώντας bugs
         """
+        logger.log_info(f"Excecuting cache replacement")
         i = self.appointments.index(target)
-        self.appointments[i] = new
+        new = self.get_appointment_by_id(new.id)
+        if isinstance(new, Appointment):
+            self.appointments[i] = new
+        else:
+            logger.log_warn("Failure to update cache")
+            self.appointments = self.get_appointments(cached=False)
 
     def add_to_cache(self, target):
         """
         Συνάρτηση ενημέρωσης του cache
         """
+        logger.log_info(f"Excecuting cache addition")
         for i in range(len(self.appointments) - 1, 0, -1):
             if self.appointments[i].date > target.date:
                 continue
@@ -302,4 +326,5 @@ class AppointmentModel:
         """
         Συνάρτηση ενημέρωσης του cache
         """
+        logger.log_info(f"Excecuting cache deletion")
         self.appointments.remove(target)
