@@ -1,3 +1,28 @@
+"""
+Βιβλιοθήκη για τα components που αφορούν το πλάγιο panel
+
+SidePanel -> Κεντρικό αντικείμενο που ελέγχει τα υπόλοιπα. Προσάπτεται στο root window
+AppointmentView -> Εμφάνιση πληροφοριών ραντεβού για μια χρονική περιόδο
+SearchView -> Εμφάνιση αποτελεσμάτων μετά από αναζήτη για χρόνο μεταξύ ραντεβού
+AlertView -> Εμφάνιση των προσεχών ραντεβού με δυνατότητα αποστολής email
+AddAppointmentView -> Δημιουργία νέου ραντεβού
+EditAppointmentView -> Διαχείριση υπάρχοντως ραντεβού
+AddCustomerView -> Δημιουργία νέου πελάτη
+EditCustomerView -> Διαχείριση υπάρχοντως πελάτη
+
+Η εμφάνιση αυτών των view γίνεται μέσω της μεθόδου SidePanel.select_view
+με πρώτη παράμετρο το όνομα του view
+
+Αντιστοιχία ονομάτων
+appointments | AppointmentView
+search | SearchView
+alert | AlertView
+add | AddAppointmentView
+edit | EditAppointmentView
+addc | AddCustomerView
+editc | EditCustomerView
+"""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -27,6 +52,36 @@ class SubscriberInterface:
 
 
 class SidePanel(ttk.Frame):
+    """
+    Η βασική οντότητα. Σημαντικό χαρακτηριστικό ότι είναι φτιαγμένη
+    ώστε να είναι μοναδική (singleton pattern) και διαχειρίζεται
+    global state ώστε να μπορούν όλα τα υπόλοιπα αντικείμενα να
+    επικοινωνούν σωστά.
+
+    Βασικές μέθοδοι:
+    SidePanel.instance() -> Επιστρέφει το ένα και μοναδικό αντικείμενο
+    SidePanel.select_vew() -> API που επιτρέπει στα άλλα αντικείμενα να
+                                ζητούν αλλαγή του panel
+    SidePanel.update_data() -> API που επιτρέπει στα άλλα αντικείμενα να
+                                στέλνουν πληροφορίες
+    SidePanel.fetch_data() -> API που επιτρέπει στα άλλα αντικείμενα να
+                                λάβουν τις αποθηκευμένες πληροφορίες
+
+    Παράδειγμα, όταν πατάμε ένα κελί στο grid των ραντεβού, ζητάμε από το
+    SidePanel να μας εμφανίσει το panel διαχείρησης αυτού του κελιού με τον
+    εξής τρόπο
+
+    SidePanel.select_view("appointments", caller=self, data=...)
+
+    Όπου caller είναι το κελί, και data είναι τα ραντεβού που διαχειρίζεται
+    το συγκεκριμένο κελί.
+
+    Το SidePanel αποθηκεύει αυτά τα δεδομένα ως "caller":self, και
+    "caller_data": ..., ώστε να μπορεί να εμφανίζει σχετικές πληροφορίες
+    που αφορούν αυτό το κελί
+    """
+
+    _instance = None
     side_views: dict[str, SideView]  # search, previous_view
     search_bar: SearchBar
     active_view: SideView
@@ -41,6 +96,8 @@ class SidePanel(ttk.Frame):
             "search": SearchResultsView(self),
             "edit": EditAppointmentView(self),
             "add": AddAppointmentView(self),
+            "addc": AddCustomerView(self),
+            "editc": EditCustomerView(self),
         }
         self.active_view = self.side_views["alert"]
         self.search_bar = SearchBar(self)
@@ -79,8 +136,34 @@ class SidePanel(ttk.Frame):
     def instance(cls) -> SidePanel | None:
         return SidePanel.data_pipeline.get("self")
 
+    @classmethod
+    def get_active_view(cls):
+        sidepanel = cls.instance()
+        if sidepanel is None:
+            logger.log_error("Failed to fetch sidepanel instance")
+            return None
+        return sidepanel
+
 
 class SideView(ttk.Frame):
+    """
+    Ο γονέας όλων των panels που εμφανίζονται στο SidePanel. Ορίζει τις βοηθητικές
+    συναρτήσεις "set_title" και "add_back_button" που θέλουν να χρησιμοποιούν όλα
+    τα panels.
+
+    Κάθε παιδί πρέπει να υλοποιεί την μέθοδο "update_content" που καλεί το SidePanel
+    όταν αλλάζει το panel μετά από εντολή κάποιου άλλου component όπως το παράδειγμα
+    που δώσαμε στην επεξήγηση του SidePanel.
+
+    Η συνήθης χρήση για την υλοποίηση είναι να λάβουμε τα στοιχεία από το SidePanel
+    και να τα εμφανίσουμε. Π.χ.
+
+    def update_content(self):
+        caller_data = SidePanel.fetch_data("caller_data")
+        label = ttk.Label(self, text=str(caller_data))
+        label.pack()
+    """
+
     name: str = ""
     data: Any
     header: ttk.Label
@@ -279,7 +362,6 @@ class AlertsView(SideView, SubscriberInterface):
         )
         alerts_count = len(self.appointments)
         rows_count = len(self.rows)
-        print(alerts_count, rows_count)
 
         if alerts_count > rows_count:
             for _ in range(alerts_count - rows_count):
@@ -497,8 +579,25 @@ class AddAppointmentView(SideView):
             sep="\n",
         )
 
-    def populate_customer(self):
-        pass
+    def populate_from_customer_tab(self):
+        customer_data = SidePanel.fetch_data("customer_data")
+        if not isinstance(customer_data, list):
+            logger.log_warn("Failed to communicate customer data")
+            return
+
+        if len(customer_data) < 5:
+            logger.log_warn("Failed to communicate customer data")
+            return
+
+        self.cus_entry_name.delete(0, tk.END)
+        self.cus_entry_surname.delete(0, tk.END)
+        self.cus_entry_phone.delete(0, tk.END)
+        self.cus_entry_email.delete(0, tk.END)
+
+        self.cus_entry_name.insert(0, customer_data[1])
+        self.cus_entry_surname.insert(0, customer_data[2])
+        self.cus_entry_phone.insert(0, customer_data[3])
+        self.cus_entry_email.insert(0, customer_data[4])
 
     def reset(self):
         for k, v in self.__dict__.items():
@@ -533,3 +632,102 @@ class SearchBar(ttk.Frame):
         )
         SidePanel.update_data("search", self.search_results)
         SidePanel.data_pipeline["self"].select_view("search")
+
+
+class AddCustomerView(SideView):
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.name = "addc"
+        self.main_frame = ttk.Frame(self)
+
+        self.set_title("Προσθήκη νέου πελάτη")
+        self.main_frame.pack(fill="both", expand=True)
+        self.add_back_btn(self)
+
+        self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
+        self.cus_entry_name.pack(fill="x")
+        self.cus_entry_surname = EntryWithPlaceholder(
+            self.main_frame, placeholder="surname"
+        )
+        self.cus_entry_surname.pack(fill="x")
+        self.cus_entry_phone = EntryWithPlaceholder(
+            self.main_frame, placeholder="phone number"
+        )
+        self.cus_entry_phone.pack(fill="x")
+        self.cus_entry_email = EntryWithPlaceholder(
+            self.main_frame, placeholder="email address"
+        )
+        self.cus_entry_email.pack(fill="x")
+        self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
+        self.save_button.pack()
+
+    def update_content(self):
+        pass
+
+    def save(self):
+        cc.create_customer(
+            Customer(
+                name=self.cus_entry_name.get(),
+                surname=self.cus_entry_surname.get(),
+                phone=self.cus_entry_phone.get(),
+                email=self.cus_entry_email.get(),
+            )
+        )
+
+
+class EditCustomerView(SideView):
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.name = "editc"
+        self.main_frame = ttk.Frame(self)
+
+        self.set_title("Επεξεργασία νέου πελάτη")
+        self.main_frame.pack(fill="both", expand=True)
+        self.add_back_btn(self)
+
+        self.cus_entry_name = ttk.Entry(self.main_frame)
+        self.cus_entry_name.pack(fill="x")
+        self.cus_entry_surname = ttk.Entry(self.main_frame)
+        self.cus_entry_surname.pack(fill="x")
+        self.cus_entry_phone = ttk.Entry(self.main_frame)
+        self.cus_entry_phone.pack(fill="x")
+        self.cus_entry_email = ttk.Entry(self.main_frame)
+        self.cus_entry_email.pack(fill="x")
+        self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
+        self.save_button.pack()
+
+    def update_content(self):
+        self.reset()
+        caller_data = SidePanel.fetch_data("caller_data")
+        if not isinstance(caller_data, list):
+            logger.log_warn("Failed to communicate customer data")
+            return
+
+        if len(caller_data) < 5:
+            logger.log_warn("Failed to communicate customer data")
+            return
+
+        self.cus_id = int(caller_data[0])
+        self.cus_entry_name.insert(0, caller_data[1])
+        self.cus_entry_surname.insert(0, caller_data[2])
+        self.cus_entry_phone.insert(0, caller_data[3])
+        self.cus_entry_email.insert(0, caller_data[4])
+
+    def save(self):
+        cc.update_customer(
+            Customer(
+                id=self.cus_id,
+                name=self.cus_entry_name.get(),
+                surname=self.cus_entry_surname.get(),
+                phone=self.cus_entry_phone.get(),
+                email=self.cus_entry_email.get(),
+            )
+        )
+
+    def reset(self):
+        self.cus_entry_name.delete(0, tk.END)
+        self.cus_entry_surname.delete(0, tk.END)
+        self.cus_entry_phone.delete(0, tk.END)
+        self.cus_entry_email.delete(0, tk.END)

@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import NamedTuple
 from .logging import Logger
-from ..model.session import SessionLocal
 from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
 
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
@@ -27,6 +26,15 @@ class AppointmentControl:
     Διαχειρίζεται όλες τις ενέργειες που απαιτούν στοιχεία από
     το table Appointments
     """
+
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance:
+            return cls._instance
+
+        cls._instance = super(AppointmentControl, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
     def __init__(self):
         self.model = AppointmentModel()

@@ -1,89 +1,50 @@
-from threading import Thread
+from ..model.types import Customer, CustomerModel
+from .logging import Logger
 
-from ..model.session import SessionLocal
-from ..model.types import Customer
+# TODO πρέπει να προσθεθούν σε όλα τα functions έλεγχος σφαλμάτων
+#       και logs
 
-# TODO: Πρέπει να αλλαχθεί το πρόγραμμα ώστε κάθε φορά που ολοκληρώνονται οι
-#       διαδικασιες του session, να κλείνει (session.close()). Ο λόγος που
-#       έγινε έτσι ήταν θέμα ταχύτητας, δουλεύει, αλλά δημιουργεί και προβλήματα
-#       μερικές φορές, ειδικά επειδή η sqlite δεν είναι ασύγχρονη.
+logger = Logger("customer-controller")
 
 
 class CustomerControl:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance:
+            return cls._instance
+
+        cls._instance = super(CustomerControl, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
     def __init__(self):
-        self.session = SessionLocal()
+        self.model = CustomerModel()
         self.customer = Customer
 
     def get_customers(self) -> list[Customer]:
-        return self.session.query(self.customer).all()
+        return self.model.get_customers()
 
-    def create_customer(self, customer: dict | Customer, threaded=False) -> None:
+    def create_customer(self, customer: Customer):
+        self.model.add_customer(customer)
 
-        if isinstance(customer, dict):
-            customer = Customer(**customer)
-        elif not isinstance(customer, Customer):
-            raise TypeError
-        if threaded:
-            Thread(target=self.create_customer, args=(customer,)).start()
+    def delete_customer(self, customer: Customer | int | None) -> None:
+        if isinstance(customer, int):
+            customer = self.model.get_customer_by_id(customer)
+        if not customer:
             return
+        self.model.delete_customer(customer)
 
-        if not self.validate_customer(customer):
-            raise ValueError
-        self.session.add(customer)
-        self.session.commit()
-
-    def delete_customer(
-        self, customer: Customer | dict | int | None, threaded=False
-    ) -> None:
-
-        if isinstance(customer, dict):
-            customer = Customer(**customer)
-        elif isinstance(customer, int):
-            customer = self.get_customer_by_id(customer)
-        if customer is None:
-            return
-        if threaded:
-            Thread(target=self.delete_customer, args=(customer,)).start()
-            return
-
-        self.session.delete(customer)
-        self.session.commit()
-
-    def update_customer(self, customer: Customer | dict | None, threaded=False) -> None:
-
-        if isinstance(customer, dict):
-            customer = Customer(**customer)
-        if customer is None:
-            return
-        if threaded:
-            Thread(target=self.update_customer, args=(customer,)).start()
-            return
-
-        old_customer = self.get_customer_by_id(customer.id)
-        if old_customer is None:
-            return
-
-        old_customer.name = customer.name
-        old_customer.surname = customer.surname
-        old_customer.email = customer.email
-        old_customer.phone = customer.phone
-        self.session.commit()
+    def update_customer(self, customer: Customer):
+        self.model.update_customer(customer)
 
     def get_customer_by_id(self, id) -> Customer | None:
-        return self.session.query(self.customer).filter_by(id=id).first()
+        return self.model.get_customer_by_id(id)
 
-    def get_customer_by_properties(self, **kwargs) -> Customer | None:
-        return self.session.query(self.customer).filter_by(**kwargs).first()
+    def get_customer_by_email(self, email: str) -> Customer | None:
+        return self.model.get_customer_by_email(email)
 
-    def validate_customer(self, customer: dict | Customer) -> bool:
-        if isinstance(customer, Customer):
-            if customer.name:
-                return True
-            else:
-                return False
+    def add_subscriber(self, node):
+        self.model.add_subscriber(node)
 
-        if isinstance(customer, dict):
-            return all(key in customer for key in ["name"]) and customer["name"]
-
-        return False
+    def get_customer_fields(self):
+        return self.model.get_fields()

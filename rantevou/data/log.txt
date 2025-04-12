@@ -105,3 +105,81 @@ WARN - [2025-04-12 13:32:40]: Failed to retrieve customer data, querying databas
 INFO - [2025-04-12 13:34:41]: Starting Rantevou - main
 INFO - [2025-04-12 13:41:37]: Starting Rantevou - main
 INFO - [2025-04-12 13:42:41]: Starting Rantevou - main
+INFO - [2025-04-12 14:59:56]: Starting Rantevou - main
+INFO - [2025-04-12 15:57:44]: Starting Rantevou - main
+INFO - [2025-04-12 15:58:29]: Starting Rantevou - main
+INFO - [2025-04-12 16:00:18]: Starting Rantevou - main
+INFO - [2025-04-12 16:11:53]: Starting Rantevou - main
+INFO - [2025-04-12 16:12:44]: Starting Rantevou - main
+INFO - [2025-04-12 16:15:32]: Starting Rantevou - main
+INFO - [2025-04-12 16:21:03]: Starting Rantevou - main
+INFO - [2025-04-12 16:22:09]: Starting Rantevou - main
+INFO - [2025-04-12 16:33:17]: Starting Rantevou - main
+INFO - [2025-04-12 16:33:28]: Starting Rantevou - main
+INFO - [2025-04-12 16:33:55]: Starting Rantevou - main
+INFO - [2025-04-12 16:36:48]: Starting Rantevou - main
+INFO - [2025-04-12 16:37:42]: Starting Rantevou - main
+INFO - [2025-04-12 16:45:45]: Starting Rantevou - main
+INFO - [2025-04-12 16:47:04]: Starting Rantevou - main
+INFO - [2025-04-12 16:47:36]: Starting Rantevou - main
+INFO - [2025-04-12 16:48:29]: Starting Rantevou - main
+INFO - [2025-04-12 16:49:10]: Starting Rantevou - main
+INFO - [2025-04-12 16:56:26]: Starting Rantevou - main
+INFO - [2025-04-12 17:00:44]: Starting Rantevou - main
+INFO - [2025-04-12 17:03:14]: Starting Rantevou - main
+INFO - [2025-04-12 17:17:19]: Starting Rantevou - main
+INFO - [2025-04-12 17:18:35]: Starting Rantevou - main
+INFO - [2025-04-12 17:18:54]: Starting Rantevou - main
+INFO - [2025-04-12 17:19:47]: Starting Rantevou - main
+INFO - [2025-04-12 17:20:16]: Starting Rantevou - main
+INFO - [2025-04-12 17:20:36]: Starting Rantevou - main
+INFO - [2025-04-12 17:21:12]: Starting Rantevou - main
+INFO - [2025-04-12 17:35:06]: Starting Rantevou - main
+INFO - [2025-04-12 17:36:05]: Starting Rantevou - main
+INFO - [2025-04-12 17:40:44]: Starting Rantevou - main
+INFO - [2025-04-12 17:41:59]: Starting Rantevou - main
+INFO - [2025-04-12 17:43:39]: Starting Rantevou - main
+INFO - [2025-04-12 17:44:45]: Starting Rantevou - main
+INFO - [2025-04-12 17:47:55]: Starting Rantevou - main
+INFO - [2025-04-12 17:49:00]: Starting Rantevou - main
+INFO - [2025-04-12 17:49:55]: Starting Rantevou - main
+INFO - [2025-04-12 17:55:34]: Starting Rantevou - main
+INFO - [2025-04-12 17:56:06]: Starting Rantevou - main
+INFO - [2025-04-12 17:57:57]: Starting Rantevou - main
+INFO - [2025-04-12 18:04:47]: Starting Rantevou - main
+INFO - [2025-04-12 18:11:29]: Starting Rantevou - main
+INFO - [2025-04-12 18:12:37]: Starting Rantevou - main
+INFO - [2025-04-12 18:13:41]: Starting Rantevou - main
+INFO - [2025-04-12 18:14:12]: Starting Rantevou - main
+INFO - [2025-04-12 18:16:10]: Starting Rantevou - main
+INFO - [2025-04-12 18:17:05]: Starting Rantevou - main
+INFO - [2025-04-12 18:19:27]: Starting Rantevou - main
+INFO - [2025-04-12 18:20:27]: Starting Rantevou - main
+INFO - [2025-04-12 18:22:32]: Starting Rantevou - main
+INFO - [2025-04-12 18:28:07]: Starting Rantevou - main
+INFO - [2025-04-12 18:44:44]: Starting Rantevou - main
+INFO - [2025-04-12 18:45:23]: Starting Rantevou - main
+INFO - [2025-04-12 18:48:35]: Starting Rantevou - main
+INFO - [2025-04-12 18:49:05]: Starting Rantevou - main
+INFO - [2025-04-12 18:49:52]: Starting Rantevou - main
+INFO - [2025-04-12 18:51:31]: Starting Rantevou - main
+INFO - [2025-04-12 18:51:42]: Updated customer Customer(id=4, name=Κλεομένης, surname=Αρβανίτης, email=sarantinos.stergiani@example.org, phone=306932272464) - customer-model
+INFO - [2025-04-12 18:52:56]: Starting Rantevou - main
+INFO - [2025-04-12 18:53:08]: Updated customer Customer(id=4, name=Κλεομένης, surname=Αρβανίτης, email=sarantinos.stergiani@example.org, phone=306932272463) - customer-model
+INFO - [2025-04-12 18:53:24]: Notifying sub .!notebook.!customerstab - customer-model
+INFO - [2025-04-12 18:53:24]: Notifying sub .!notebook.!customerstab.!customersheet - customer-model
+INFO - [2025-04-12 18:55:34]: Updated customer Customer(id=4, name=Κλεομένης, surname=Αρβανίτης, email=sarantinos.stergiani@example.org, phone=306932272465) - customer-model
+INFO - [2025-04-12 18:59:19]: Starting Rantevou - main
+INFO - [2025-04-12 19:03:46]: Starting Rantevou - main
+WARN - [2025-04-12 19:03:55]: Failed to communicate customer data - sidepanel
+INFO - [2025-04-12 19:04:24]: Updated customer Customer(id=4, name=Κλεομένης, surname=Αρβανίτης, email=sarantinos.stergiani@example.org, phone=306932272465) - customer-model
+INFO - [2025-04-12 19:15:53]: Starting Rantevou - main
+WARN - [2025-04-12 19:16:02]: Failed to communicate customer data - sidepanel
+INFO - [2025-04-12 19:16:33]: Notifying sub .!notebook.!customerstab - customer-model
+INFO - [2025-04-12 19:16:33]: Notifying sub .!notebook.!customerstab.!customersheet - customer-model
+INFO - [2025-04-12 19:34:23]: Starting Rantevou - main
+INFO - [2025-04-12 19:35:48]: Starting Rantevou - main
+INFO - [2025-04-12 19:41:31]: Starting Rantevou - main
+INFO - [2025-04-12 19:41:41]: Starting Rantevou - main
+INFO - [2025-04-12 19:42:07]: Starting Rantevou - main
+INFO - [2025-04-12 19:43:35]: Starting Rantevou - main

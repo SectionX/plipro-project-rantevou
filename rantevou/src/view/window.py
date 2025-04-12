@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any
 from .appointments import AppointmentsTab
-from .customers import Customers
+from .customers import CustomersTab
 from .statistics import Statistics
 from .alerts import Alerts
 from .sidepanel import SidePanel
@@ -46,7 +46,7 @@ class Window(tk.Tk):
         self.title(title)
         self.tabs = Notebook(self)
         self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
-        self.tabs.add(Customers(self.tabs), text="Customers")
+        self.tabs.add(CustomersTab(self.tabs), text="Customers")
         self.tabs.add(Statistics(self.tabs), text="Statistics")
 
         self.side_panel = SidePanel(self, style="primary.TFrame", width=200)

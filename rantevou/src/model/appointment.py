@@ -6,7 +6,7 @@ from collections import defaultdict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
-from .session import Base, SessionLocal
+from .session import Base, session
 from . import customer
 from ..controller.logging import Logger
 
@@ -110,7 +110,7 @@ class AppointmentModel:
     def __init__(self):
         self.subscribers = []
         self.appointments = []
-        self.session = SessionLocal()
+        self.session = session
         self.appointments = self.get_appointments(cached=False)
 
     def sort(self, list_=None) -> list[Appointment]:
