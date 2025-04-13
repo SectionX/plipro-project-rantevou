@@ -61,17 +61,27 @@ class CustomerModel:
         self.session = session
         self.customers = session.query(Customer).all()
         self.subscribers = []
+        if len(self.customers) > 0:
+            self.max_id = max(self.customers, key=lambda x: x.id).id
+        else:
+            self.max_id = 0
 
     def get_fields(self):
         return ["id", "name", "surname", "phone", "email", "appointments"]
 
-    def add_customer(self, customer: Customer) -> int:
-        session.add(customer)
-        session.commit()
+    def add_customer(self, customer: Customer) -> int | None:
+        logger.log_info(f"Excecuting creation of {customer}")
 
-        customer_with_id = (
-            session.query(Customer).filter_by(email=customer.email).first()
-        )
+        try:
+            session.add(customer)
+            session.commit()
+            self.max_id += 1
+            logger.log_info(f"Assigned id={self.max_id}")
+        except Exception as e:
+            logger.log_error(str(e))
+            session.rollback()
+            return None
+        customer_with_id = session.query(Customer).filter_by(id=self.max_id).first()
         # TODO update cache
         if customer_with_id is None:
             logger.log_error("Failed to retrieve customer id after insertion")
@@ -80,16 +90,25 @@ class CustomerModel:
         self.notify_subscribers()
         return customer_with_id.id
 
-    def delete_customer(self, customer):
-        session.delete(customer)
-        session.commit()
+    def delete_customer(self, customer) -> bool:
+        logger.log_info(f"Excecuting deletion of {customer}")
+        try:
+            session.delete(customer)
+            session.commit()
+            if customer.id == self.max_id:
+                self.max_id -= 1
+        except Exception as e:
+            logger.log_error(str(e))
+            session.rollback()
+            return False
+
         self.notify_subscribers()
+        return True
         # TODO update cache
 
     def update_customer(self, new_customer: Customer):
-        old_customer = (
-            session.query(Customer).filter_by(email=new_customer.email).first()
-        )
+        logger.log_info(f"Excecuting update of {new_customer}")
+        old_customer = session.query(Customer).filter_by(id=new_customer.id).first()
         if old_customer is None:
             # TODO handle
             return
@@ -98,9 +117,16 @@ class CustomerModel:
         old_customer.name = new_customer.name
         old_customer.surname = new_customer.surname
         old_customer.phone = new_customer.phone
-        session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            logger.log_error(str(e))
+            session.rollback()
+            return False
+
         logger.log_info(f"Updated customer {new_customer}")
         self.notify_subscribers()
+        return True
         # TODO update cache
 
     def get_customer_by_id(self, id: int):
@@ -109,15 +135,20 @@ class CustomerModel:
     def get_customer_by_email(self, email: str):
         return session.query(Customer).filter_by(email=email).first()
 
+    def get_customer_by_phone(self, phone: str):
+        return session.query(Customer).filter_by(phone=phone).first()
+
     def get_customers(self):
         return session.query(Customer).all()
         # TODO update and return cache instead
 
     def add_subscriber(self, subscriber: Subscriber):
+        logger.log_info(f"Excecuting subscription of {subscriber}")
         self.subscribers.append(subscriber)
 
     def notify_subscribers(self):
-        print(self.subscribers)
+        logger.log_info(
+            f"Excecuting notification of {len(self.subscribers)} subscribers"
+        )
         for sub in self.subscribers:
-            logger.log_info(f"Notifying sub {sub}")
             sub.subscriber_update()

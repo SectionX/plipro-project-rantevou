@@ -15,20 +15,24 @@ from typing import Any
 from .appointments import AppointmentsTab
 from .customers import CustomersTab
 from .statistics import Statistics
-from .alerts import Alerts
 from .sidepanel import SidePanel
+from ..controller import get_config
+
+cfg = get_config()
+
+color1 = cfg["color_pallete"]["background"]
+color2 = cfg["color_pallete"]["foreground"]
+color3 = cfg["color_pallete"]["fieldbackground"]
 
 # standard colors
-
-sbackground = "#313131"
-sforeground = "#fcfcfc"
-sfieldbackground = "lightblue"
+sbackground = color1
+sforeground = color2
+sfieldbackground = color3
 
 # primary colors
-pbackground = "lightblue"
-pforeground = "#313131"
-pfieldbackground = "#fcfcfc"
-# secondary colors
+pbackground = color3
+pforeground = color1
+pfieldbackground = color2
 
 
 class Notebook(ttk.Notebook):
@@ -48,6 +52,15 @@ class Window(tk.Tk):
         self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
         self.tabs.add(CustomersTab(self.tabs), text="Customers")
         self.tabs.add(Statistics(self.tabs), text="Statistics")
+
+        self.bind_all(
+            "<Key>",
+            lambda x: (
+                self.tabs.select(int(x.keysym[1:]) - 1)
+                if x.keysym.startswith("F")
+                else None
+            ),
+        )
 
         self.side_panel = SidePanel(self, style="primary.TFrame", width=200)
 
@@ -95,4 +108,23 @@ class Window(tk.Tk):
         )
         style.configure("primary.TFrame", background=pbackground)
 
-        # appointment sidepanel
+        # buttons
+
+        style.configure(
+            "low.TLabel",
+            background=cfg["buttons"]["low"],
+        )
+        style.configure(
+            "medium.TLabel",
+            background=cfg["buttons"]["medium"],
+        )
+        style.configure(
+            "high.TLabel",
+            background=cfg["buttons"]["high"],
+        )
+        style.configure(
+            "max.TLabel",
+            background=cfg["buttons"]["max"],
+        )
+        style.configure("edit.TButton", background=cfg["buttons"]["max"])
+        style.configure("add.TButton", background=cfg["buttons"]["medium"])

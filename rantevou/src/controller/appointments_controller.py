@@ -65,7 +65,17 @@ class AppointmentControl:
             return
 
         cmodel = CustomerModel()
-        existing_customer = cmodel.get_customer_by_email(customer.email)
+        existing_customer = (
+            cmodel.session.query(Customer)
+            .filter(
+                Customer.name == customer.name,
+                Customer.surname == customer.surname,
+                Customer.phone == customer.phone,
+                Customer.email == customer.email,
+            )
+            .first()
+        )
+
         if existing_customer is None:
             id = cmodel.add_customer(customer)
             appointment.customer_id = id
@@ -125,12 +135,8 @@ class AppointmentControl:
                     self.model.update_appointment(old_appointment, appointment)
                     return True
 
-                if (
-                    old_customer == customer
-                    and old_customer.id == appointment.customer_id
-                ):
-                    self.model.update_appointment(old_appointment, appointment)
-                    return True
+                if old_customer != customer:
+                    cmodel.update_customer(customer)
 
             self.model.update_appointment(old_appointment, appointment)
             return True
@@ -166,7 +172,7 @@ class AppointmentControl:
         start: datetime,
         period: timedelta,
     ):
-        logger.log_info(
+        logger.log_debug(
             f"Requesting model to split appointments in groups for {start=}, {period=}"
         )
         return self.model.split_appointments_in_periods(period, start)
@@ -178,21 +184,24 @@ class AppointmentControl:
     def get_time_between_appointments(
         self,
         start_date: datetime | None = None,
+        end_date: datetime | None = None,
         minumum_free_period: timedelta | None = None,
     ) -> list[tuple[datetime, timedelta]]:
-        logger.log_info(
+        logger.log_debug(
             f"Requesting list of time between appointments for {start_date=}, {minumum_free_period=}"
         )
-        return self.model.get_time_between_appointments(start_date, minumum_free_period)
+        return self.model.get_time_between_appointments(
+            start_date, end_date, minumum_free_period
+        )
 
     def get_index_from_date(
         self, date: datetime, start_date: datetime, period_duration: timedelta
     ) -> int:
-        logger.log_info(
+        logger.log_debug(
             f"Requesting calculation of group index for {date=}, {start_date=}, {period_duration=}"
         )
         return (date - start_date) // period_duration
 
     def get_appointments_from_to_date(self, start: datetime, end: datetime):
-        logger.log_info(f"Requesting query of appointments from {start} to {end}")
+        logger.log_debug(f"Requesting query of appointments from {start} to {end}")
         return self.model.get_appointments_from_to_date(start, end)

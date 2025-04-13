@@ -19,10 +19,9 @@ from ..model.types import Appointment
 logger = Logger("AppointmentsTab")
 ac = AppointmentControl()
 cc = CustomerControl()
-cfg: dict[str, Any] = (
-    get_config()
-)  # working_hours, opening_hour, rows, columns, minimum appointment duration
+cfg: dict[str, Any] = get_config()["view_settings"]
 cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
+cfgb = get_config()["buttons"]
 
 
 class SubscriberInterface:
@@ -234,32 +233,74 @@ class GridCell(ttk.Frame, SubscriberInterface):
         *args,
         **kwargs,
     ):
-        ttk.Frame.__init__(self, root, *args, **kwargs)
+        super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
-        self.config(style="primary.TFrame")
 
         self.group_index = appointment_group_index
         self.period_start = period_start
         self.period_duration = period_duration
         self.period_end = period_start + period_duration
-        self.text = ttk.Label(self, style="primary.TLabel")
+
+        self.text = ttk.Label(self)
         self.text.pack(fill="both", expand=True, padx=3, pady=3)
         self.text.bind("<Button-1>", lambda x: self.show_in_sidepanel())
+
         self.draw()
 
     @property
     def appointments(self):
         return AppointmentsTab.appointment_groups[self.group_index]
 
+    @property
+    def first_of_next_period(self):
+        appointments = AppointmentsTab.appointment_groups[self.group_index + 1]
+        if len(appointments) == 0:
+            return Appointment(
+                date=self.period_end + timedelta(minutes=120),
+                duration=timedelta(minutes=20),
+            )
+        return appointments[0]
+
+    @property
+    def last_of_previous_period(self):
+        appointments = AppointmentsTab.appointment_groups[self.group_index - 1]
+        if len(appointments) == 0:
+            return Appointment(date=self.period_start, duration=timedelta(0))
+        return appointments[-1]
+
+    @property
+    def times_between_appointments(self) -> list[tuple[datetime, timedelta]]:
+        return ac.get_time_between_appointments(
+            start_date=self.period_start,
+            end_date=self.period_end,
+            minumum_free_period=timedelta(0),
+        )
+
     def subscriber_update(self):
         self.draw()
 
     def draw(self):
-        start = self.period_start.strftime("%H:%M")
-        end = self.period_end.strftime("%H:%M")
-        self.text.config(
-            text=(f"{self.group_index=}\n" f"Appointments: {len(self.appointments)}")
-        )
+        appointment_count = len(self.appointments)
+        times_between = self.times_between_appointments
+        times_between.sort(key=lambda x: x[1])
+
+        minimum = cfg["minimum_appointment_duration"]
+        slots = [
+            int(td.total_seconds() // 60)
+            for _, td in times_between
+            if td >= timedelta(minutes=minimum)
+        ]
+        if appointment_count <= 1:
+            self.text.config(style="low.TLabel")
+        elif appointment_count == 2:
+            self.text.config(style="medium.TLabel")
+        elif appointment_count == 3:
+            self.text.config(style="high.TLabel")
+        elif appointment_count > 3:
+            self.text.config(style="max.TLabel")
+
+        text = f"Ραντεβού:{appointment_count}\n" f"{len(slots)} θέσεις"
+        self.text.config(text=text)
 
     def move_left(self):
         self.period_start -= timedelta(days=1)
@@ -278,4 +319,32 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.draw()
 
     def show_in_sidepanel(self):
-        SidePanel.select_view(view="appointments", caller=self, data=self.appointments)
+        appointments = []
+        true_first = self.last_of_previous_period.end_date
+        fake_first = self.period_start
+
+        if fake_first > true_first:
+            delta = timedelta(0)
+
+        else:
+            delta = true_first - fake_first
+
+        first = Appointment(date=self.period_start, duration=delta)
+        last = self.first_of_next_period
+
+        temp = [first] + self.appointments + [last]
+
+        for i, appointment in enumerate(temp):
+            if i == len(temp) - 1:
+                break
+
+            appointments.append(appointment)
+            appointments.append(
+                Appointment(
+                    date=appointment.end_date,
+                    duration=temp[i + 1].date - appointment.end_date,
+                )
+            )
+        appointments.append(last)
+
+        SidePanel.select_view(view="appointments", caller=self, data=appointments[1:-1])

@@ -1,0 +1,24 @@
+{
+    "view_settings": 
+    {
+        "opening_hour": 9,
+        "working_hours": 8,
+        "rows": 4,
+        "columns": 7,
+        "minimum_appointment_duration": 20,
+        "step": 5
+    },
+    "color_pallete":
+    {
+        "background": "#313131",
+        "foreground": "#fcfcfc",
+        "fieldbackground": "#add8e6"
+    },
+    "buttons":
+    {
+        "low": "#8DA9D3",
+        "medium": "#7883B6",
+        "high": "#646399",
+        "max": "#594E7B"
+    }
+}
