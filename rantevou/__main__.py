@@ -12,6 +12,8 @@ if len(argv) > 1:
         raise Exception("Unknown argument")
     exit(0)
 
+Logger.level = 1
+
 
 def main():
     """
@@ -30,7 +32,7 @@ def main():
     στον κώδικα και να τρέχετε το πρόγραμμα. Χωρίς αυτό θα πρέπει να κάνετε
     reinstall κάθε φορά που κάνετε αλλαγές.
     """
-    Logger.level = 1
+
     logger = Logger("main")
     logger.log_info("Starting Rantevou")
 

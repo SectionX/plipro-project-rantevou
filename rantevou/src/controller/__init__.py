@@ -1,9 +1,14 @@
 import json
 import pathlib
 
-PATH = pathlib.Path(__file__).parent.parent.parent.parent / "config.json"
+PATH = pathlib.Path(__file__).parent.parent.parent.parent / "settings.json"
+
+cfg = None
 
 
 def get_config():
-    with PATH.open("r") as f:
-        return json.load(f)
+    global cfg
+    if cfg is None:
+        with PATH.open("r") as f:
+            cfg = json.load(f)
+    return cfg

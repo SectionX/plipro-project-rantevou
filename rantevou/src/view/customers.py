@@ -30,14 +30,48 @@ class SearchBar(ttk.Frame):
     searchbar: ttk.Entry
     customers: list[Customer]
     sheet: CustomerSheet
+    key_sequence: list[str]
 
     def __init__(self, master, sheet: CustomerSheet, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.sheet = sheet
+        self.key_sequence = []
         self.searchbar = ttk.Entry(self)
+        self.searchbar.bind("<Key>", self.search)
+        self.searchbar.bind("<Visibility>", lambda x: self.searchbar.focus())
         self.searchbar.pack()
 
-    def search(self): ...
+    def search(self, event: tk.Event):
+        symbol = event.keysym
+        char = event.char
+
+        if symbol == "Escape":
+            self.key_sequence = []
+            self.sheet.populate_sheet()
+            self.searchbar.delete(0, tk.END)
+            return
+
+        if symbol == "BackSpace":
+            self.key_sequence.pop()
+            self.sheet.populate_sheet()
+        else:
+            self.key_sequence.append(char)
+
+        keysequence = "".join(self.key_sequence).lower()
+
+        for item in self.sheet.get_children():
+            keep_line = False
+            values = self.sheet.item(item)["values"]
+
+            for value in values:
+                value = normalize("NFKD", str(value)).lower().replace("́", "")
+
+                if value.startswith(keysequence):
+                    keep_line = True
+                    break
+
+            if not keep_line:
+                self.sheet.delete(item)
 
 
 class CustomerSheet(ttk.Treeview, SubscriberInterface):
@@ -65,11 +99,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.populate_sheet()
 
     def subscriber_update(self):
-        print("updating")
-        self.delete(*self.get_children())
         self.populate_sheet()
 
     def populate_sheet(self):
+        self.delete(*self.get_children())
         for customer in CustomersTab.customers:
             values = customer.values
             values[-1] = len(values[-1])
@@ -135,16 +168,13 @@ class ManagementBar(ttk.Frame):
         self.del_button.pack(side=tk.LEFT)
 
     def add_customer(self):
-        print(cc.model.subscribers)
         SidePanel.select_view("addc")
         # TODO update treeview instead of reloading
 
     def edit_customer(self):
-        print(cc.model.subscribers)
         SidePanel.select_view("editc", caller=self, data=self.sheet.focus_values)
 
     def del_customer(self):
-        print(cc.model.subscribers)
         id = int(self.sheet.focus_values[0])
         name = self.sheet.focus_values[1]
         surname = self.sheet.focus_values[2]
@@ -161,8 +191,8 @@ class ManagementBar(ttk.Frame):
 class CustomersTab(AppFrame, SubscriberInterface):
     customers: list[Customer] = cc.get_customers()
 
-    def __init__(self, root):
-        super().__init__(root)
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
 
         self.customer_sheet = CustomerSheet(self)

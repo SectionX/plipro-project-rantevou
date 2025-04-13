@@ -19,9 +19,7 @@ from ..model.types import Appointment
 logger = Logger("AppointmentsTab")
 ac = AppointmentControl()
 cc = CustomerControl()
-cfg: dict[str, Any] = (
-    get_config()
-)  # working_hours, opening_hour, rows, columns, minimum appointment duration
+cfg: dict[str, Any] = get_config()["view_settings"]
 cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 
 
@@ -251,15 +249,47 @@ class GridCell(ttk.Frame, SubscriberInterface):
     def appointments(self):
         return AppointmentsTab.appointment_groups[self.group_index]
 
+    @property
+    def first_of_next_period(self):
+        appointments: list[Appointment] = []
+        i = 1
+        while len(appointments) == 0:
+            appointments = AppointmentsTab.appointment_groups[self.group_index + i]
+            i += 1
+
+        return appointments[0]
+
+    @property
+    def times_between_appointments(self) -> list[tuple[datetime, timedelta]]:
+        return ac.get_time_between_appointments(
+            start_date=self.period_start,
+            end_date=self.period_end,
+            minumum_free_period=timedelta(0),
+            include_start=True,
+        )
+
     def subscriber_update(self):
         self.draw()
 
     def draw(self):
-        start = self.period_start.strftime("%H:%M")
-        end = self.period_end.strftime("%H:%M")
-        self.text.config(
-            text=(f"{self.group_index=}\n" f"Appointments: {len(self.appointments)}")
+        appointment_count = len(self.appointments)
+        times_between = self.times_between_appointments
+        times_between.sort(key=lambda x: x[1])
+
+        if len(times_between) > 0:
+            max_free_period = times_between[-1][1].total_seconds() // 60
+            min_free_period = times_between[0][1].total_seconds() // 60
+        else:
+            max_free_period = 120
+            min_free_period = 120
+
+        text = (
+            f"Ραντεβού:\n{appointment_count}\n"
+            f"Μέγιστο κενό:\n{max_free_period} λεπτά\n"
+            f"Ελάχιστο κενό:\n{min_free_period} λεπτά"
         )
+
+        self.text.config(text=text)
 
     def move_left(self):
         self.period_start -= timedelta(days=1)
@@ -278,4 +308,8 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.draw()
 
     def show_in_sidepanel(self):
-        SidePanel.select_view(view="appointments", caller=self, data=self.appointments)
+        SidePanel.select_view(
+            view="appointments",
+            caller=self,
+            data=(self.appointments, self.first_of_next_period, self.period_start),
+        )
