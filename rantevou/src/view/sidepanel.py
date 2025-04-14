@@ -241,8 +241,11 @@ class AppointmentViewButton(ttk.Button):
             self.after(0, self.forget)
             return
 
+        start = (self.expiration_date - self.duration).strftime("%H:%M")
+        minutes = f"{int(self.duration.total_seconds() // 60)} λεπτά"
+
         self.config(
-            text=f"Add new: {str(int(self.duration.total_seconds() // 60))}",
+            text=f"{start}: {minutes}",
             command=self.add_appointment,
         )
 
