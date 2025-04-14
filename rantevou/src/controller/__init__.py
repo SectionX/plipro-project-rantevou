@@ -12,3 +12,8 @@ def get_config():
         with PATH.open("r") as f:
             cfg = json.load(f)
     return cfg
+
+
+from .logging import Logger
+
+Logger.archive_day()

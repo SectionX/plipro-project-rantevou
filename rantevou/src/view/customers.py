@@ -4,9 +4,9 @@ from unicodedata import normalize
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import askyesno
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 from .abstract_views import AppFrame
-from .sidepanel import SidePanel, AddAppointmentView
+from .sidepanel import SidePanel
 from ..model.types import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.appointments_controller import AppointmentControl
@@ -24,6 +24,11 @@ class SubscriberInterface:
 
     def subscriber_update(self):
         raise NotImplementedError
+
+
+@runtime_checkable
+class PopulateFromCustomer(Protocol):
+    def populate_from_customer_tab(self): ...
 
 
 class SearchBar(ttk.Frame):
@@ -84,10 +89,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         SubscriberInterface.__init__(self)
         self.focus_values = []
         self.focus_column_index = 0
-        self.column_names = cc.get_customer_fields()
+        self.column_names = Customer.field_names()
         self["columns"] = self.column_names
         self.bind("<Button-1>", self.get_focus_values)
-        self.bind("<Double-Button-1>", self.populate_add_appointment_view)
+        self.bind("<Double-Button-1>", self.populate_appointment_view)
 
         for i, name in enumerate(self.column_names):
             self.heading(
@@ -106,6 +111,7 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         for customer in CustomersTab.customers:
             values = customer.values
             values[-1] = len(values[-1])
+            values = [value or "" for value in values]
             self.insert("", "end", values=values)
 
     def get_focus_values(self, event: tk.Event):
@@ -125,21 +131,19 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
             self.move(item, "", index)
         self.heading(colname, command=lambda: self.sort(not reverse))
 
-    def populate_add_appointment_view(self, *args):
+    def populate_appointment_view(self, *args):
         SidePanel.update_data("customer_data", self.focus_values)
         sidepanel = SidePanel.instance()
         if sidepanel is None:
             logger.log_warn("Failed to communicate with SidePanel")
             return
 
-        if sidepanel.active_view != sidepanel.side_views["add"]:
-            return
-
-        view = sidepanel.side_views["add"]
-        if isinstance(view, AddAppointmentView):
-            view.populate_from_customer_tab()
-        else:
-            logger.log_warn('Failed to communicate with "add" view')
+        side_view = SidePanel.get_active_view()
+        if isinstance(side_view, PopulateFromCustomer):
+            try:
+                side_view.populate_from_customer_tab()
+            except:
+                logger.log_error(f"Failed to communicate with {side_view}")
 
 
 class ManagementBar(ttk.Frame):
@@ -185,7 +189,7 @@ class ManagementBar(ttk.Frame):
         )
 
         if confirmation:
-            cc.delete_customer(int(self.sheet.focus_values[0]))
+            cc.delete_customer(Customer(id=id))
 
 
 class CustomersTab(AppFrame, SubscriberInterface):

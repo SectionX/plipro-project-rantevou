@@ -25,11 +25,12 @@ editc | EditCustomerView
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
+from collections import deque
 
 from ..controller import get_config
 from ..controller.logging import Logger
@@ -43,6 +44,12 @@ ac = AppointmentControl()
 cc = CustomerControl()
 mailer = Mailer()
 logger = Logger("sidepanel")
+
+
+@runtime_checkable
+class Caller(Protocol):
+    def show_in_sidepanel(self):
+        pass
 
 
 class SubscriberInterface:
@@ -105,9 +112,21 @@ class SidePanel(ttk.Frame):
         self.active_view = self.side_views["alert"]
         self.search_bar = SearchBar(self)
         self.search_bar.pack(side=tk.BOTTOM, fill="x")
+        self.caller_stack: deque[Caller] = deque(maxlen=10)
         self._select_view()
 
+    def _return(self):
+        caller = self.caller_stack.pop()
+        caller.show_in_sidepanel()
+
     def _select_view(self, view: str | None = None, caller=None, data=None):
+        if isinstance(caller, Caller):
+            self.caller_stack.append(caller)
+
+        if caller == SidePanel.fetch_data("caller"):
+            SidePanel.update_data("caller_data", data)
+            self.active_view.update_content()
+
         SidePanel.update_data("previous_view", self.active_view.name)
         SidePanel.update_data("previous_caller", SidePanel.fetch_data("caller"))
         SidePanel.update_data(
@@ -149,7 +168,14 @@ class SidePanel(ttk.Frame):
         if sidepanel is None:
             logger.log_error("Failed to fetch sidepanel instance")
             return None
-        return sidepanel
+        return sidepanel.active_view
+
+    @classmethod
+    def go_back(cls):
+        instance = SidePanel.instance()
+        if instance is None:
+            raise Exception("Failure to initialize SidePanel")
+        instance._return()
 
 
 class SideView(ttk.Frame):
@@ -223,7 +249,7 @@ class AppointmentViewButton(ttk.Button):
 
         if self.appointment:
             text = f"{self.appointment.date.strftime('%H:%M')}-{self.appointment.end_date.strftime('%H:%M')}"
-            self.config(text=text, style="edit.TButton")
+            self.config(text=text, style="edit.TButton", command=self.edit_appointment)
         else:
             self.config(style="add.TButton")
             self.create_add_button()
@@ -241,8 +267,11 @@ class AppointmentViewButton(ttk.Button):
             self.after(0, self.forget)
             return
 
+        start = (self.expiration_date - self.duration).strftime("%H:%M")
+        minutes = f"{int(self.duration.total_seconds() // 60)} λεπτά"
+
         self.config(
-            text=f"Add new: {str(int(self.duration.total_seconds() // 60))}",
+            text=f"{start}: {minutes}",
             command=self.add_appointment,
         )
 
@@ -301,8 +330,6 @@ class AppointmentView(SideView):
                 expiration_date=appointment.end_date,
                 appointment=None,
             ).pack(fill="x")
-
-        print(*caller_data, "\n", sep="\n")
 
 
 class AlertRow(ttk.Frame):
@@ -515,16 +542,27 @@ class EditAppointmentView(SideView):
         self.appointment = Appointment()
         self.customer = None
 
-        self.app_entry_year = ttk.Entry(self.main_frame)
-        self.app_entry_year.pack(fill="x")
-        self.app_entry_month = ttk.Entry(self.main_frame)
-        self.app_entry_month.pack(fill="x")
-        self.app_entry_day = ttk.Entry(self.main_frame)
-        self.app_entry_day.pack(fill="x")
-        self.app_entry_hour = ttk.Entry(self.main_frame)
-        self.app_entry_hour.pack(fill="x")
-        self.app_entry_minute = ttk.Entry(self.main_frame)
-        self.app_entry_minute.pack(fill="x")
+        self.date_frame = ttk.Frame(self.main_frame)
+        self.date_frame.pack()
+
+        self.hour_frame = ttk.Frame(self.main_frame)
+        self.hour_frame.pack()
+
+        self.app_entry_day = ttk.Entry(self.date_frame, width=2)
+        self.app_entry_day.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(side=tk.LEFT)
+        self.app_entry_month = ttk.Entry(self.date_frame, width=2)
+        self.app_entry_month.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(side=tk.LEFT)
+        self.app_entry_year = ttk.Entry(self.date_frame, width=4)
+        self.app_entry_year.pack(side=tk.LEFT)
+
+        self.app_entry_hour = ttk.Entry(self.hour_frame, width=2)
+        self.app_entry_hour.pack(side=tk.LEFT)
+        ttk.Label(self.hour_frame, text=":").pack(side=tk.LEFT)
+        self.app_entry_minute = ttk.Entry(self.hour_frame, width=2)
+        self.app_entry_minute.pack(side=tk.LEFT)
+
         self.app_entry_duration = ttk.Entry(self.main_frame)
         self.app_entry_duration.pack(fill="x")
 
@@ -573,17 +611,19 @@ class EditAppointmentView(SideView):
         date = self.appointment.date
 
         self.app_entry_year.insert(0, str(date.year))
-        self.app_entry_month.insert(0, str(date.month))
-        self.app_entry_day.insert(0, str(date.day))
-        self.app_entry_hour.insert(0, str(date.hour))
-        self.app_entry_minute.insert(0, str(date.minute))
-        self.app_entry_duration.insert(0, str(self.appointment.duration))
+        self.app_entry_month.insert(0, f"{date.month:02d}")
+        self.app_entry_day.insert(0, f"{date.day:02d}")
+        self.app_entry_hour.insert(0, f"{date.hour:02d}")
+        self.app_entry_minute.insert(0, f"{date.minute:02d}")
+        self.app_entry_duration.insert(
+            0, str(int(self.appointment.duration.total_seconds() // 60))
+        )
 
         if self.customer is None:
-            self.cus_entry_name.insert(0, "Customer name")
-            self.cus_entry_surname.insert(0, "Customer surname")
-            self.cus_entry_phone.insert(0, "Customer phone")
-            self.cus_entry_email.insert(0, "Customer email")
+            self.cus_entry_name.put_placeholder()
+            self.cus_entry_surname.put_placeholder()
+            self.cus_entry_phone.put_placeholder()
+            self.cus_entry_email.put_placeholder()
         else:
             self.cus_entry_name.insert(0, self.customer.name)
             if self.cus_entry_surname is not None:
@@ -597,6 +637,7 @@ class EditAppointmentView(SideView):
         # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
         # βάση δεδομένων
         ac.delete_appointment(self.appointment)
+        SidePanel.go_back()
 
     def save(self):
         # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
@@ -623,22 +664,41 @@ class EditAppointmentView(SideView):
             phone=self.cus_entry_phone.get_without_placeholder(),
             email=self.cus_entry_email.get_without_placeholder(),
         )
+        if self.customer is not None:
+            new_customer.id = self.customer.id
 
         if new_customer.name == None:
-            result = ac.update_appointment(self.appointment, new_appointment)
+            logger.log_info("Updating appointmenth without customer")
+            result = ac.update_appointment(new_appointment)
         else:
-            result = ac.update_appointment(
-                self.appointment, new_appointment, new_customer
-            )
+            result = ac.update_appointment(new_appointment, new_customer)
 
         if not result:
             showerror("Something went wrong...")
             self.update_content()
+            SidePanel.go_back()
 
     def reset(self):
         for k, v in self.__dict__.items():
             if isinstance(v, ttk.Entry):
                 v.delete(0, tk.END)
+
+    def populate_from_customer_tab(self):
+        data = SidePanel.fetch_data("customer_data")
+        if not isinstance(data, list):
+            logger.log_error("Data from customer was wrong type")
+            return
+
+        id, name, surname, phone, email, *_ = data
+        self.cus_entry_name.delete(0, tk.END)
+        self.cus_entry_name.insert(0, name)
+        self.cus_entry_surname.delete(0, tk.END)
+        self.cus_entry_surname.insert(0, surname)
+        self.cus_entry_phone.delete(0, tk.END)
+        self.cus_entry_phone.insert(0, phone)
+        self.cus_entry_email.delete(0, tk.END)
+        self.cus_entry_email.insert(0, email)
+        self.appointment.customer_id = int(id)
 
 
 class EntryWithPlaceholder(ttk.Entry):
@@ -737,6 +797,8 @@ class AddAppointmentView(SideView):
 
     def update_content(self):
         data = SidePanel.fetch_data("caller_data")
+        self.previous_caller = SidePanel.fetch_data("caller")
+
         logger.log_info(f"Showing appointment creation panel with data {data}")
 
         if not isinstance(data, tuple):
@@ -773,7 +835,7 @@ class AddAppointmentView(SideView):
             second=0,
             microsecond=0,
         )
-        duration = timedelta(int(self.app_entry_duration.get()))
+        duration = timedelta(minutes=int(self.app_entry_duration.get()))
 
         appointment = Appointment(date=date, duration=duration)
         customer = Customer(
@@ -783,6 +845,7 @@ class AddAppointmentView(SideView):
             email=self.cus_entry_email.get_without_placeholder(),
         )
         ac.create_appointment(appointment, customer)
+        SidePanel.go_back()
 
     def populate_from_customer_tab(self):
         customer_data = SidePanel.fetch_data("customer_data")
@@ -877,15 +940,18 @@ class AddCustomerView(SideView):
         self.save_button.pack()
 
     def update_content(self):
-        pass
+        for entry in self.main_frame.winfo_children():
+            if isinstance(entry, EntryWithPlaceholder):
+                entry.delete(0, tk.END)
+                entry.put_placeholder()
 
     def save(self):
         cc.create_customer(
             Customer(
-                name=self.cus_entry_name.get(),
-                surname=self.cus_entry_surname.get(),
-                phone=self.cus_entry_phone.get(),
-                email=self.cus_entry_email.get(),
+                name=self.cus_entry_name.get_without_placeholder(),
+                surname=self.cus_entry_surname.get_without_placeholder(),
+                phone=self.cus_entry_phone.get_without_placeholder(),
+                email=self.cus_entry_email.get_without_placeholder(),
             )
         )
 
@@ -924,19 +990,23 @@ class EditCustomerView(SideView):
             return
 
         self.cus_id = int(caller_data[0])
-        self.cus_entry_name.insert(0, caller_data[1])
-        self.cus_entry_surname.insert(0, caller_data[2])
-        self.cus_entry_phone.insert(0, caller_data[3])
-        self.cus_entry_email.insert(0, caller_data[4])
+        if caller_data[1] is not None:
+            self.cus_entry_name.insert(0, caller_data[1])
+        if caller_data[2] is not None:
+            self.cus_entry_surname.insert(0, caller_data[2])
+        if caller_data[3] is not None:
+            self.cus_entry_phone.insert(0, caller_data[3])
+        if caller_data[4] is not None:
+            self.cus_entry_email.insert(0, caller_data[4])
 
     def save(self):
         cc.update_customer(
             Customer(
                 id=self.cus_id,
-                name=self.cus_entry_name.get(),
-                surname=self.cus_entry_surname.get(),
-                phone=self.cus_entry_phone.get(),
-                email=self.cus_entry_email.get(),
+                name=self.cus_entry_name.get() or None,
+                surname=self.cus_entry_surname.get() or None,
+                phone=self.cus_entry_phone.get() or None,
+                email=self.cus_entry_email.get() or None,
             )
         )
 

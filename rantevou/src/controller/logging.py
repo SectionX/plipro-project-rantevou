@@ -51,16 +51,57 @@ ERROR - Αυτή η περίπτωση είναι για κάποιο κατασ
 Εάν είναι 4 τότε δεν εκτυπώνεται τίποτα
 """
 
+from __future__ import annotations
+
 import datetime
 import pathlib
+import shutil
+import zipfile
+import re
 from typing import Literal
 
 
 class Logger:
 
+    pattern_date = re.compile(r"\[\d+-\d+-(\d+)")
     logfile_path = pathlib.Path(__file__).parent.parent.parent / "data" / "log.txt"
+    zipfile_path = pathlib.Path(__file__).parent.parent.parent / "data" / "log.zip"
     level = 0
     levels = ["DEBUG", "INFO", "WARN", "ERROR"]
+
+    @classmethod
+    def archive_day(cls):
+        with cls.logfile_path.open("r") as f:
+            first = next(f)
+
+        date_search = cls.pattern_date.search(first)
+        if not date_search:
+            return
+
+        day_log = int(date_search.group(1))
+        day_now = datetime.datetime.now().day
+
+        if day_now == day_log:
+            return
+
+        date = f"{date_search.group()}]"
+        dst = cls.logfile_path.parent / f"log-{date}.txt"
+        shutil.move(
+            src=str(cls.logfile_path),
+            dst=str(dst),
+        )
+
+        zf = zipfile.ZipFile(
+            file=str(cls.zipfile_path),
+            mode="a",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        )
+        zf.write(
+            filename=str(dst),
+            arcname=dst.name,
+        )
+        dst.unlink()
 
     def __init__(self, name=""):
         self.name = name

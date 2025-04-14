@@ -125,18 +125,24 @@ class AppointmentModel:
 
     """
 
-    appointments: list[Appointment]
-    subscribers: list[Subscriber]
+    _instance = None
+    session = session
+    appointments: list[Appointment] = []
+    subscribers: list[Subscriber] = []
+    max_id = 0
 
-    def __init__(self):
-        self.subscribers = []
-        self.appointments = []
-        self.session = session
-        self.appointments = self.get_appointments(cached=False)
-        if len(self.appointments) > 0:
-            self.max_id = max(self.appointments, key=lambda x: x.id).id
-        else:
-            self.max_id = 0
+    def __new__(cls, *args, **kwargs) -> AppointmentModel:
+        if cls._instance is None:
+            cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
+            cls.appointments = session.query(Appointment).all()
+            cls.appointments.sort(key=lambda x: x.date)
+            cls.subscribers = []
+            if len(cls.appointments) > 0:
+                cls.max_id = max(cls.appointments, key=lambda x: x.id).id
+            else:
+                cls.max_id = 0
+
+        return cls._instance
 
     def sort(self, list_=None) -> list[Appointment]:
         """
@@ -144,12 +150,8 @@ class AppointmentModel:
         πληροφορία αυτής της οντότητας.
         """
         logger.log_info("Excecuting sorting of cached appointments")
-        if list_:
-            list_.sort(key=lambda x: x.date)
-            return list_
-        else:
-            self.appointments.sort(key=lambda x: x.date)
-            return self.appointments
+        self.appointments.sort(key=lambda x: x.date)
+        return self.appointments
 
     def add_appointment(
         self, appointment: Appointment, update: bool = True
@@ -158,6 +160,9 @@ class AppointmentModel:
         Προσθήκη νέου ραντεβού στην βάση δεδομένων και ενημέρωση του cache
         """
         logger.log_info(f"Excecuting creation of new {appointment=}")
+
+        # TODO Έλεγχος για overlap στις ημερομηνίες. Πρέπει η καινούρια
+        # ημερομηνία και η διάρκεια να μην είναι μεταξύ date, end_date
 
         # Προσθήκη στην βάση δεδομένων
         try:
@@ -191,25 +196,46 @@ class AppointmentModel:
         # Επιστροφή του μοναδικού id για περεταίρω διαχείρηση δεδομένων
         return appointment_with_id.id
 
-    def update_appointment(self, old: Appointment, new: Appointment) -> bool:
+    def is_similar(self, appointment1: Appointment, appointment2: Appointment):
+        return all(
+            (
+                appointment1.id == appointment2.id,
+                appointment1.date == appointment2.date,
+                appointment1.is_alerted == appointment2.is_alerted,
+                appointment1.duration == appointment2.duration,
+            )
+        )
+
+    def update_appointment(
+        self, appointment: Appointment, customer_id: int | None = None
+    ) -> bool:
         """
         Ενημέρωση στοιχείων ραντεβού στην βάση δεδομένων και ενημέρωση cache
-        """
-        logger.log_info(f"Excecuting update of appointment={new}")
+        Επιβάλλει να υπάρχει id στο ραντεβού προς ενημέρωση
 
-        # Αναζήτηση του στοιχείου προς ενημέρωση στην βάση δεδομένων
-        target = self.session.query(Appointment).filter_by(date=old.date).first()
-        if target is None:
-            logger.log_warn(
-                "Failed to retrieve appointment, make sure data are correct"
-            )
+        Επιστρέφει boolean επιτυχίας
+        """
+        logger.log_info(f"Excecuting update of {appointment}")
+
+        if appointment.id is None:
+            logger.log_warn("Appointment must have an id")
             return False
 
-        # Ενημέρωση του στοιχείου
-        target.date = new.date
-        target.duration = new.duration
-        target.customer_id = target.customer_id
+        old_appointment = (
+            session.query(Appointment).filter_by(id=appointment.id).first()
+        )
+        if old_appointment is None:
+            logger.log_warn("Appointment was not found in database")
+            return False
 
+        if isinstance(customer_id, int):
+            old_appointment.customer_id = appointment.customer_id
+
+        old_appointment.date = appointment.date
+        old_appointment.duration = appointment.duration
+        old_appointment.is_alerted = appointment.is_alerted
+
+        # Ενημέρωση του στοιχείου
         try:
             self.session.commit()
         except Exception as e:
@@ -217,15 +243,16 @@ class AppointmentModel:
             self.session.rollback()
             return False
 
-        # Έλεγχος ορθότητας (εξυπηρετεί και λειτουργικό σκοπό, επειδή εάν δεν
-        # γίνει ανάκτηση, η sqlalchemy "ξεχνάει" την σύνδεση με τον πελάτη)
-        target = self.session.query(Appointment).filter_by(id=target.id).first()
-        if target is None:
+        # Ενημέρ
+
+        # Έλεγχος ορθότητας. Θα αφαιρεθεί μετά απο εξωνυχιστικό testing
+        updated_appointment = self.get_appointment_by_id(old_appointment.id)
+        if updated_appointment is None:
             logger.log_error("Failed to retrieve appointment after insertion")
-            raise Exception(f"DB failure on updating {new}")
+            raise Exception(f"DB failure on updating {appointment}")
 
         # Ενημέρωση του cache
-        self.replace_in_cache(old, target)
+        self.replace_in_cache(old_appointment)
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
@@ -238,8 +265,6 @@ class AppointmentModel:
         try:
             self.session.delete(appointment)
             self.session.commit()
-            if appointment.id == self.max_id:
-                self.max_id -= 1
         except Exception as e:
             logger.log_error(str(e))
             self.session.rollback()
@@ -247,25 +272,22 @@ class AppointmentModel:
 
         # Ενημέρωση του cache
         self.appointments.remove(appointment)
+        if len(self.appointments) == 0:
+            self.max_id = 0
+        else:
+            self.max_id = max(self.appointments, key=lambda x: x.id).id
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
         return True
 
-    def get_appointments(self, cached=True) -> list[Appointment]:
+    def get_appointments(self) -> list[Appointment]:
         """
         Διπλή λειτουργία ανάκτησης στοιχείων απο την βάση δεδομένων και
         διάθεσης του cache στις σχετικές μονάδες.
         """
         logger.log_debug(f"Excecuting query of all appointments")
-
-        # Εαν υπάρχει cache
-        if cached:
-            return self.appointments
-
-        # Εάν δεν υπάρχει cache
-        query = self.session.query(Appointment).all()
-        return self.sort(query)
+        return self.appointments
 
     def get_appointment_by_id(self, appointment_id: int) -> Appointment | None:
         """
@@ -398,19 +420,26 @@ class AppointmentModel:
 
         return result
 
-    def replace_in_cache(self, target, new):
+    def replace_in_cache(self, new_appointment: Appointment) -> None:
         """
         Συνάρτηση ενημέρωσης του cache.
         """
         logger.log_info(f"Excecuting cache replacement")
-        i = self.appointments.index(target)
-        self.appointments[i] = new
+
+        for i, appointment in enumerate(self.appointments):
+            if appointment.id == new_appointment.id:
+                self.appointments[i] = new_appointment
+                return
 
     def add_to_cache(self, target):
         """
         Συνάρτηση ενημέρωσης του cache
         """
         logger.log_info(f"Excecuting cache addition")
+
+        if len(self.appointments) == 0:
+            self.appointments.append(target)
+            return
 
         # Μικρό optimization εφόσον οι νέες προσθήκες γίνονται σε νεότερες
         # ημερομηνίες και το cache είναι sorted κατα ημερομηνία

@@ -126,5 +126,21 @@ class Window(tk.Tk):
             "max.TLabel",
             background=cfg["buttons"]["max"],
         )
+        style.configure(
+            "low.TButton",
+            background=cfg["buttons"]["low"],
+        )
+        style.configure(
+            "medium.TButton",
+            background=cfg["buttons"]["medium"],
+        )
+        style.configure(
+            "high.TButton",
+            background=cfg["buttons"]["high"],
+        )
+        style.configure(
+            "max.TButton",
+            background=cfg["buttons"]["max"],
+        )
         style.configure("edit.TButton", background=cfg["buttons"]["max"])
         style.configure("add.TButton", background=cfg["buttons"]["medium"])

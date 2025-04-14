@@ -82,8 +82,12 @@ class GridNavBar(ttk.Frame):
 
     def __init__(self, root: Grid, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.move_left = ttk.Button(self, text="Previous", command=root.move_left)
-        self.move_right = ttk.Button(self, text="Next", command=root.move_right)
+        self.move_left = ttk.Button(
+            self, text="Previous", command=root.move_left, style="low.TButton"
+        )
+        self.move_right = ttk.Button(
+            self, text="Next", command=root.move_right, style="low.TButton"
+        )
         self.move_right.pack(side=tk.RIGHT)
         self.move_left.pack(side=tk.RIGHT)
 
@@ -256,8 +260,8 @@ class GridCell(ttk.Frame, SubscriberInterface):
         appointments = AppointmentsTab.appointment_groups[self.group_index + 1]
         if len(appointments) == 0:
             return Appointment(
-                date=self.period_end + timedelta(minutes=120),
-                duration=timedelta(minutes=20),
+                date=self.period_end + timedelta(minutes=0),
+                duration=timedelta(minutes=0),
             )
         return appointments[0]
 
@@ -285,11 +289,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
         times_between.sort(key=lambda x: x[1])
 
         minimum = cfg["minimum_appointment_duration"]
-        slots = [
-            int(td.total_seconds() // 60)
-            for _, td in times_between
-            if td >= timedelta(minutes=minimum)
-        ]
         if appointment_count <= 1:
             self.text.config(style="low.TLabel")
         elif appointment_count == 2:
@@ -299,7 +298,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
         elif appointment_count > 3:
             self.text.config(style="max.TLabel")
 
-        text = f"Ραντεβού:{appointment_count}\n" f"{len(slots)} θέσεις"
+        text = f"Ραντεβού:{appointment_count}"
         self.text.config(text=text)
 
     def move_left(self):
@@ -335,16 +334,24 @@ class GridCell(ttk.Frame, SubscriberInterface):
         temp = [first] + self.appointments + [last]
 
         for i, appointment in enumerate(temp):
+            date = appointment.end_date
             if i == len(temp) - 1:
                 break
 
             appointments.append(appointment)
-            appointments.append(
-                Appointment(
-                    date=appointment.end_date,
-                    duration=temp[i + 1].date - appointment.end_date,
+            while date < temp[i + 1].date:
+                appointments.append(
+                    Appointment(
+                        date=date,
+                        duration=min(
+                            temp[i + 1].date - date,
+                            timedelta(minutes=20),
+                        ),
+                    )
                 )
-            )
+                if appointment.date > self.period_end:
+                    appointments.pop()
+                date += timedelta(minutes=20)
         appointments.append(last)
 
         SidePanel.select_view(view="appointments", caller=self, data=appointments[1:-1])
