@@ -223,7 +223,7 @@ class AppointmentViewButton(ttk.Button):
 
         if self.appointment:
             text = f"{self.appointment.date.strftime('%H:%M')}-{self.appointment.end_date.strftime('%H:%M')}"
-            self.config(text=text, style="edit.TButton")
+            self.config(text=text, style="edit.TButton", command=self.edit_appointment)
         else:
             self.config(style="add.TButton")
             self.create_add_button()
@@ -518,16 +518,27 @@ class EditAppointmentView(SideView):
         self.appointment = Appointment()
         self.customer = None
 
-        self.app_entry_year = ttk.Entry(self.main_frame)
-        self.app_entry_year.pack(fill="x")
-        self.app_entry_month = ttk.Entry(self.main_frame)
-        self.app_entry_month.pack(fill="x")
-        self.app_entry_day = ttk.Entry(self.main_frame)
-        self.app_entry_day.pack(fill="x")
-        self.app_entry_hour = ttk.Entry(self.main_frame)
-        self.app_entry_hour.pack(fill="x")
-        self.app_entry_minute = ttk.Entry(self.main_frame)
-        self.app_entry_minute.pack(fill="x")
+        self.date_frame = ttk.Frame(self.main_frame)
+        self.date_frame.pack()
+
+        self.hour_frame = ttk.Frame(self.main_frame)
+        self.hour_frame.pack()
+
+        self.app_entry_day = ttk.Entry(self.date_frame, width=2)
+        self.app_entry_day.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(side=tk.LEFT)
+        self.app_entry_month = ttk.Entry(self.date_frame, width=2)
+        self.app_entry_month.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(side=tk.LEFT)
+        self.app_entry_year = ttk.Entry(self.date_frame, width=4)
+        self.app_entry_year.pack(side=tk.LEFT)
+
+        self.app_entry_hour = ttk.Entry(self.hour_frame, width=2)
+        self.app_entry_hour.pack(side=tk.LEFT)
+        ttk.Label(self.hour_frame, text=":").pack(side=tk.LEFT)
+        self.app_entry_minute = ttk.Entry(self.hour_frame, width=2)
+        self.app_entry_minute.pack(side=tk.LEFT)
+
         self.app_entry_duration = ttk.Entry(self.main_frame)
         self.app_entry_duration.pack(fill="x")
 
@@ -576,11 +587,13 @@ class EditAppointmentView(SideView):
         date = self.appointment.date
 
         self.app_entry_year.insert(0, str(date.year))
-        self.app_entry_month.insert(0, str(date.month))
-        self.app_entry_day.insert(0, str(date.day))
-        self.app_entry_hour.insert(0, str(date.hour))
-        self.app_entry_minute.insert(0, str(date.minute))
-        self.app_entry_duration.insert(0, str(self.appointment.duration))
+        self.app_entry_month.insert(0, f"{date.month:02d}")
+        self.app_entry_day.insert(0, f"{date.day:02d}")
+        self.app_entry_hour.insert(0, f"{date.hour:02d}")
+        self.app_entry_minute.insert(0, f"{date.minute:02d}")
+        self.app_entry_duration.insert(
+            0, str(int(self.appointment.duration.total_seconds() // 60))
+        )
 
         if self.customer is None:
             self.cus_entry_name.insert(0, "Customer name")
