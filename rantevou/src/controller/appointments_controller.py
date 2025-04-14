@@ -186,13 +186,12 @@ class AppointmentControl:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         minumum_free_period: timedelta | None = None,
-        include_start: bool = False,
     ) -> list[tuple[datetime, timedelta]]:
         logger.log_debug(
             f"Requesting list of time between appointments for {start_date=}, {minumum_free_period=}"
         )
         return self.model.get_time_between_appointments(
-            start_date, end_date, minumum_free_period, include_start
+            start_date, end_date, minumum_free_period
         )
 
     def get_index_from_date(

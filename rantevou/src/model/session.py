@@ -12,8 +12,6 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 session = SessionLocal()
-for x in session:
-    print(x)
 
 
 class Base(DeclarativeBase):
@@ -55,7 +53,10 @@ def generate_fake_appointment_data():
 
         is_alerted = bool(randint(0, 1))
         yield Appointment(
-            date=start_date, customer_id=customer_id, is_alerted=is_alerted
+            date=start_date,
+            customer_id=customer_id,
+            is_alerted=is_alerted,
+            duration=timedelta(minutes=20),
         )
 
 

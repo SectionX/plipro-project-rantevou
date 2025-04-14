@@ -238,17 +238,16 @@ class AppointmentViewButton(ttk.Button):
         if self.duration == timedelta(0):
             self.after(0, self.forget)
             return
-        self.config(text="Add " + str(self.duration), command=self.add_appointment)
+        self.config(
+            text=f"Add new: {str(int(self.duration.total_seconds() // 60))}",
+            command=self.add_appointment,
+        )
 
     def add_appointment(self):
-        min_duration = min(self.expiration_date - datetime.now(), self.duration)
-        start_date = self.expiration_date - min_duration
-        print(min_duration)
-        print(start_date)
-        print(self.expiration_date)
-
         SidePanel.select_view(
-            "add", caller="appointments", data=(start_date, min_duration)
+            "add",
+            caller="appointments",
+            data=(self.expiration_date - self.duration, self.duration),
         )
 
     def edit_appointment(self):
@@ -276,50 +275,85 @@ class AppointmentView(SideView):
             button.destroy()
 
         caller_data = SidePanel.fetch_data("caller_data")
-        logger.log_info(f"Showing appointment data {caller_data}")
-
-        if not (isinstance(caller_data, tuple) and len(caller_data) == 3):
-            logger.log_error("Appointment data are wrong")
+        if not (
+            isinstance(caller_data, list) and isinstance(caller_data[0], Appointment)
+        ):
+            logger.log_warn("Wrong data")
             return
 
-        appointments: list[Appointment] = caller_data[0]
-        if not isinstance(appointments, list):
-            logger.log_error(f"Appointment data are wrong")
-            return
-
-        first_of_next_period: Appointment = caller_data[1]
-        if not isinstance(first_of_next_period, Appointment):
-            logger.log_error(f"Appointment data are wrong")
-            return
-
-        period_start: datetime = caller_data[2]
-        if not isinstance(period_start, datetime):
-            logger.log_error(f"Appointment data are wrong")
-            return
-
-        appointments = appointments + [first_of_next_period]
-
-        date = period_start
-        for i, appointment in enumerate(appointments, 1):
-            delta = appointment.time_between_dates(date)
-            AppointmentViewButton(
-                self.main_frame,
-                appointment=None,
-                duration=delta,
-                expiration_date=appointment.date,
-            ).pack(fill="x", padx=1, pady=1)
-
-            if i == len(appointments):
-                break
+        appointment: Appointment
+        for appointment in caller_data:
+            if appointment.id is not None:
+                AppointmentViewButton(
+                    self.main_frame,
+                    duration=appointment.duration,
+                    expiration_date=appointment.end_date,
+                    appointment=appointment,
+                ).pack()
+                continue
 
             AppointmentViewButton(
                 self.main_frame,
-                appointment=appointment,
-                duration=timedelta(appointment.duration),
+                duration=appointment.duration,
                 expiration_date=appointment.end_date,
-            ).pack(fill="x", padx=1, pady=1)
+                appointment=None,
+            ).pack(fill="x")
 
-            date = appointment.end_date
+        # logger.log_info(f"Showing appointment data {caller_data}")
+
+        # if not (isinstance(caller_data, tuple) and len(caller_data) == 3):
+        #     logger.log_error("Appointment data are wrong")
+        #     return
+
+        # appointments: list[Appointment] = caller_data[0]
+        # if not isinstance(appointments, list):
+        #     logger.log_error(f"Appointment data are wrong")
+        #     return
+
+        # first_of_next_period: Appointment = caller_data[1]
+        # if not isinstance(first_of_next_period, Appointment):
+        #     logger.log_error(f"Appointment data are wrong")
+        #     return
+
+        # period_start: datetime = caller_data[2]
+        # if not isinstance(period_start, datetime):
+        #     logger.log_error(f"Appointment data are wrong")
+        #     return
+
+        # if len(appointments) == 0:
+        #     min_duration = cfg["minimum_appointment_duration"]
+        #     expiration = period_start + cfg["period_duration"]
+        #     AppointmentViewButton(
+        #         self.main_frame,
+        #         appointment=None,
+        #         duration=timedelta(minutes=min_duration),
+        #         expiration_date=period_start + timedelta(minutes=expiration),
+        #     ).pack(fill="x", padx=1, pady=1)
+        #     return
+
+        # appointments = appointments + [first_of_next_period]
+
+        # date = period_start
+        # for i, appointment in enumerate(appointments, 1):
+        #     delta = appointment.time_between_dates(date)
+        #     AppointmentViewButton(
+        #         self.main_frame,
+        #         appointment=None,
+        #         duration=delta,
+        #         expiration_date=appointment.date,
+        #     ).pack(fill="x", padx=1, pady=1)
+
+        #     if i == len(appointments):
+        #         break
+
+        #     AppointmentViewButton(
+        #         self.main_frame,
+        #         appointment=appointment,
+        #         duration=appointment.duration,
+        #         expiration_date=appointment.end_date,
+        #     ).pack(fill="x", padx=1, pady=1)
+
+        #     date = appointment.end_date
 
 
 class AlertRow(ttk.Frame):
@@ -630,7 +664,7 @@ class EditAppointmentView(SideView):
         new_appointment = Appointment(
             id=self.appointment.id,
             date=date,
-            duration=self.app_entry_duration.get(),
+            duration=timedelta(minutes=int(self.app_entry_duration.get())),
             is_alerted=self.appointment.is_alerted,
             customer_id=self.appointment.customer_id,
         )
@@ -781,8 +815,6 @@ class AddAppointmentView(SideView):
         self.reset()
 
     def save(self):
-        # TODO -> Make it save the data to db
-
         date = datetime(
             year=int(self.app_entry_year.get()),
             month=int(self.app_entry_month.get()),
@@ -792,7 +824,7 @@ class AddAppointmentView(SideView):
             second=0,
             microsecond=0,
         )
-        duration = int(self.app_entry_duration.get())
+        duration = timedelta(int(self.app_entry_duration.get()))
 
         appointment = Appointment(date=date, duration=duration)
         customer = Customer(

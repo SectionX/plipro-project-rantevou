@@ -52,7 +52,7 @@ class Appointment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(nullable=False, unique=True)
     is_alerted: Mapped[bool] = mapped_column(default=False)
-    duration: Mapped[int] = mapped_column(default=20)
+    duration: Mapped[timedelta] = mapped_column(default=timedelta(minutes=20))
     customer_id: Mapped[int | None] = mapped_column(
         ForeignKey("customer.id"), nullable=True
     )
@@ -78,7 +78,7 @@ class Appointment(Base):
         Υπολογίζει την ακριβή ημερομηνία που θα πρέπει να έχει
         ολοκληρωθεί το ραντεβού
         """
-        return self.date + timedelta(minutes=self.duration)
+        return self.date + self.duration
 
     @property
     def time_to_appointment(self) -> timedelta:
@@ -294,28 +294,6 @@ class AppointmentModel:
             .all()
         )
 
-    def add_subscriber(self, subscriber: Subscriber):
-        """
-        Δήλωση των subscribers στην λίστα προς ενημέρωση
-        """
-        # Έλεγχος εάν το αντικείμενο υλοποιεί την κατάλληλη διεπαφή
-        if not hasattr(subscriber, "subscriber_update"):
-            logger.log_error("Object is not a subscriber")
-            raise Exception("Subscribers must implement the subscriber interface")
-
-        logger.log_info(f"Adding {subscriber=}")
-        self.subscribers.append(subscriber)
-
-    def update_subscribers(self):
-        """
-        Ενημέρωση των δηλωμένων subscribers
-        """
-        logger.log_info(
-            f"Excecuting notification of {len(self.subscribers)} subscribers"
-        )
-        for subscriber in self.subscribers:
-            subscriber.subscriber_update()
-
     def split_appointments_in_periods(
         self,
         period: timedelta,
@@ -367,7 +345,6 @@ class AppointmentModel:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         minumum_free_period: timedelta | None = None,
-        include_start: bool = False,
     ) -> list[tuple[datetime, timedelta]]:
         """
         Συνάρτηση αναζήτησης κενού χρόνου μεταξύ των ραντεβού. Σκοπός είναι
@@ -382,6 +359,9 @@ class AppointmentModel:
 
         # Για λόγους στατιστικών στοιχείων, εάν δεν δωθεί αρχική ημερομηνία,
         # υπολογίζει από την αρχή
+        if len(self.appointments) == 0:
+            return [(datetime.now(), timedelta(minutes=20))]
+
         if start_date is None:
             start_date = self.appointments[0].date
 
@@ -402,13 +382,6 @@ class AppointmentModel:
             # Αγνοεί τα ραντεβού πριν και μετά την ημερομηνία που θέλει ο χρηστης
             if appointment.end_date < start_date:
                 continue
-
-            # Συμπεριλαμβάνει και την αρχική ημερομηνία αν ζητηθεί
-            if include_start:
-                compare_date = appointment.date
-                diff = compare_date - start_date
-                result.append((start_date, diff))
-                include_start = False
 
             if appointment.date >= end_date:
                 break
@@ -453,3 +426,25 @@ class AppointmentModel:
         """
         logger.log_info(f"Excecuting cache deletion")
         self.appointments.remove(target)
+
+    def add_subscriber(self, subscriber: Subscriber):
+        """
+        Δήλωση των subscribers στην λίστα προς ενημέρωση
+        """
+        # Έλεγχος εάν το αντικείμενο υλοποιεί την κατάλληλη διεπαφή
+        if not hasattr(subscriber, "subscriber_update"):
+            logger.log_error("Object is not a subscriber")
+            raise Exception("Subscribers must implement the subscriber interface")
+
+        logger.log_info(f"Adding {subscriber=}")
+        self.subscribers.append(subscriber)
+
+    def update_subscribers(self):
+        """
+        Ενημέρωση των δηλωμένων subscribers
+        """
+        logger.log_info(
+            f"Excecuting notification of {len(self.subscribers)} subscribers"
+        )
+        for subscriber in self.subscribers:
+            subscriber.subscriber_update()
