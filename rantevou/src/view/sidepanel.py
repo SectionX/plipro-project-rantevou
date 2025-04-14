@@ -25,11 +25,12 @@ editc | EditCustomerView
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
+from collections import deque
 
 from ..controller import get_config
 from ..controller.logging import Logger
@@ -43,6 +44,12 @@ ac = AppointmentControl()
 cc = CustomerControl()
 mailer = Mailer()
 logger = Logger("sidepanel")
+
+
+@runtime_checkable
+class Caller(Protocol):
+    def show_in_sidepanel(self):
+        pass
 
 
 class SubscriberInterface:
@@ -105,9 +112,21 @@ class SidePanel(ttk.Frame):
         self.active_view = self.side_views["alert"]
         self.search_bar = SearchBar(self)
         self.search_bar.pack(side=tk.BOTTOM, fill="x")
+        self.caller_stack: deque[Caller] = deque(maxlen=10)
         self._select_view()
 
+    def _return(self):
+        caller = self.caller_stack.pop()
+        caller.show_in_sidepanel()
+
     def _select_view(self, view: str | None = None, caller=None, data=None):
+        if isinstance(caller, Caller):
+            self.caller_stack.append(caller)
+
+        if caller == SidePanel.fetch_data("caller"):
+            SidePanel.update_data("caller_data", data)
+            self.active_view.update_content()
+
         SidePanel.update_data("previous_view", self.active_view.name)
         SidePanel.update_data("previous_caller", SidePanel.fetch_data("caller"))
         SidePanel.update_data(
@@ -150,6 +169,13 @@ class SidePanel(ttk.Frame):
             logger.log_error("Failed to fetch sidepanel instance")
             return None
         return sidepanel.active_view
+
+    @classmethod
+    def go_back(cls):
+        instance = SidePanel.instance()
+        if instance is None:
+            raise Exception("Failure to initialize SidePanel")
+        instance._return()
 
 
 class SideView(ttk.Frame):
@@ -611,6 +637,7 @@ class EditAppointmentView(SideView):
         # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
         # βάση δεδομένων
         ac.delete_appointment(self.appointment)
+        SidePanel.go_back()
 
     def save(self):
         # TODO Μετατροπή δεδομένων σε κατάλληλο τύπο και σύνδεση με την
@@ -649,6 +676,7 @@ class EditAppointmentView(SideView):
         if not result:
             showerror("Something went wrong...")
             self.update_content()
+            SidePanel.go_back()
 
     def reset(self):
         for k, v in self.__dict__.items():
@@ -769,6 +797,8 @@ class AddAppointmentView(SideView):
 
     def update_content(self):
         data = SidePanel.fetch_data("caller_data")
+        self.previous_caller = SidePanel.fetch_data("caller")
+
         logger.log_info(f"Showing appointment creation panel with data {data}")
 
         if not isinstance(data, tuple):
@@ -815,6 +845,7 @@ class AddAppointmentView(SideView):
             email=self.cus_entry_email.get_without_placeholder(),
         )
         ac.create_appointment(appointment, customer)
+        SidePanel.go_back()
 
     def populate_from_customer_tab(self):
         customer_data = SidePanel.fetch_data("customer_data")
