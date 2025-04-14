@@ -149,7 +149,7 @@ class SidePanel(ttk.Frame):
         if sidepanel is None:
             logger.log_error("Failed to fetch sidepanel instance")
             return None
-        return sidepanel
+        return sidepanel.active_view
 
 
 class SideView(ttk.Frame):
@@ -594,10 +594,10 @@ class EditAppointmentView(SideView):
         )
 
         if self.customer is None:
-            self.cus_entry_name.insert(0, "Customer name")
-            self.cus_entry_surname.insert(0, "Customer surname")
-            self.cus_entry_phone.insert(0, "Customer phone")
-            self.cus_entry_email.insert(0, "Customer email")
+            self.cus_entry_name.put_placeholder()
+            self.cus_entry_surname.put_placeholder()
+            self.cus_entry_phone.put_placeholder()
+            self.cus_entry_email.put_placeholder()
         else:
             self.cus_entry_name.insert(0, self.customer.name)
             if self.cus_entry_surname is not None:
@@ -642,11 +642,9 @@ class EditAppointmentView(SideView):
 
         if new_customer.name == None:
             logger.log_info("Updating appointmenth without customer")
-            result = ac.update_appointment(self.appointment, new_appointment)
+            result = ac.update_appointment(new_appointment)
         else:
-            result = ac.update_appointment(
-                self.appointment, new_appointment, new_customer
-            )
+            result = ac.update_appointment(new_appointment, new_customer)
 
         if not result:
             showerror("Something went wrong...")
@@ -656,6 +654,23 @@ class EditAppointmentView(SideView):
         for k, v in self.__dict__.items():
             if isinstance(v, ttk.Entry):
                 v.delete(0, tk.END)
+
+    def populate_from_customer_tab(self):
+        data = SidePanel.fetch_data("customer_data")
+        if not isinstance(data, list):
+            logger.log_error("Data from customer was wrong type")
+            return
+
+        id, name, surname, phone, email, *_ = data
+        self.cus_entry_name.delete(0, tk.END)
+        self.cus_entry_name.insert(0, name)
+        self.cus_entry_surname.delete(0, tk.END)
+        self.cus_entry_surname.insert(0, surname)
+        self.cus_entry_phone.delete(0, tk.END)
+        self.cus_entry_phone.insert(0, phone)
+        self.cus_entry_email.delete(0, tk.END)
+        self.cus_entry_email.insert(0, email)
+        self.appointment.customer_id = int(id)
 
 
 class EntryWithPlaceholder(ttk.Entry):
@@ -944,19 +959,23 @@ class EditCustomerView(SideView):
             return
 
         self.cus_id = int(caller_data[0])
-        self.cus_entry_name.insert(0, caller_data[1])
-        self.cus_entry_surname.insert(0, caller_data[2])
-        self.cus_entry_phone.insert(0, caller_data[3])
-        self.cus_entry_email.insert(0, caller_data[4])
+        if caller_data[1] is not None:
+            self.cus_entry_name.insert(0, caller_data[1])
+        if caller_data[2] is not None:
+            self.cus_entry_surname.insert(0, caller_data[2])
+        if caller_data[3] is not None:
+            self.cus_entry_phone.insert(0, caller_data[3])
+        if caller_data[4] is not None:
+            self.cus_entry_email.insert(0, caller_data[4])
 
     def save(self):
         cc.update_customer(
             Customer(
                 id=self.cus_id,
-                name=self.cus_entry_name.get(),
-                surname=self.cus_entry_surname.get(),
-                phone=self.cus_entry_phone.get(),
-                email=self.cus_entry_email.get(),
+                name=self.cus_entry_name.get() or None,
+                surname=self.cus_entry_surname.get() or None,
+                phone=self.cus_entry_phone.get() or None,
+                email=self.cus_entry_email.get() or None,
             )
         )
 

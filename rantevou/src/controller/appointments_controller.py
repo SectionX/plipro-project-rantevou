@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from typing import NamedTuple
 from .logging import Logger
-from tkinter import ttk
 from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
 from .customers_controller import CustomerControl
 
@@ -31,7 +32,7 @@ class AppointmentControl:
 
     _instance = None
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> AppointmentControl:
         if cls._instance:
             return cls._instance
 
@@ -50,100 +51,67 @@ class AppointmentControl:
 
     def create_appointment(
         self, appointment: Appointment, customer: Customer | None = None
-    ) -> None:
+    ) -> int | None:
         """
         Προσθέτει καινούρια εγγραφή στο table Appointments
         """
-        logger.log_info(
-            f"Requesting new appointment creation {appointment=}, {customer=}"
-        )
-        # TODO Η υλοποίηση είναι ενδεικτική. Ότι έχει να κάνει με πελάτες
-        # πρέπει να εκτελεστεί από το customer control
+        logger.log_info(f"Requesting creation of {appointment} for {customer}")
 
         if customer is None:
+            logger.log_debug("Creating appointment without customer")
             appointment.customer_id = None
-            self.model.add_appointment(appointment)
-            return
+            return self.model.add_appointment(appointment)
 
-        cc = CustomerModel()
-        existing_customer = (
-            cc.session.query(Customer)
-            .filter(
-                Customer.name == customer.name,
-                Customer.surname == customer.surname,
-                Customer.phone == customer.phone,
-                Customer.email == customer.email,
-            )
-            .first()
-        )
+        cc = CustomerControl()
+        if customer.id is None:
+            logger.log_debug("Creating appointment and adding customer")
+            customer_id, _ = cc.create_customer(customer)
+            appointment.customer_id = customer_id  # type: ignore
+            return self.model.add_appointment(appointment)
 
-        if existing_customer is None:
-            id = cc.add_customer(customer)
-            appointment.customer_id = id
-        else:
-            appointment.customer_id = existing_customer.id
+        if customer.id is not None:
+            logger.log_debug("Creating appointment and updating customer")
+            cc.update_customer(customer)
+            appointment.customer_id = customer.id
+            return self.model.add_appointment(appointment)
 
-        self.model.add_appointment(appointment)
+        logger.log_warn("Request Failure")
+        return None
 
-    def delete_appointment(self, appointment: Appointment | dict | int) -> bool:
+    def delete_appointment(self, appointment: Appointment) -> bool:
         """
         Σβήνει μια εγγραφή από το table Appointments
         """
-        logger.log_info(f"Requesting appointment deletion for {appointment=}")
-        if isinstance(appointment, int):
-            full_appointment = self.model.get_appointment_by_id(appointment)
-            if full_appointment:
-                appointment = full_appointment
-            else:
-                return False
-
-        if isinstance(appointment, dict):
-            try:
-                appointment = Appointment(**appointment)
-            except Exception as e:
-                logger.log_warn(str(e))
-                return False
-
-        self.model.delete_appointment(appointment)
-
-        return True
+        logger.log_info(f"Requesting deletion for {appointment}")
+        return self.model.delete_appointment(appointment)
 
     def update_appointment(
         self,
-        old_appointment: Appointment,
         appointment: Appointment,
         customer: Customer | None = None,
     ) -> bool:
         """
         Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments
         """
-        logger.log_info(
-            f"Requesting appointment update for {appointment=}, {customer=}"
-        )
+        logger.log_info(f"Requesting update for {appointment} for {customer}")
 
-        check = self.model.get_appointment_by_id(old_appointment.id)
-        if check is None:
-            logger.log_error("Cannot update non existing appointment")
-            return False
+        if customer is None:
+            logger.log_debug("Updating appointment without customer")
+            return self.model.update_appointment(appointment)
 
         cc = CustomerControl()
-        try:
-            if customer:
-                old_customer = cc.get_customer_by_email(customer.email)
-                if old_customer is None:
-                    id = cc.create_customer(customer)
-                    appointment.customer_id = id
-                    self.model.update_appointment(old_appointment, appointment)
-                    return True
+        if customer.id is None:
+            logger.log_debug("Updating appointment and adding customer")
+            customer_id, _ = cc.create_customer(customer)
+            return self.model.update_appointment(appointment, customer_id)
 
-                if old_customer != customer:
-                    cc.update_customer(customer)
+        if customer.id is not None:
+            logger.log_debug("Updating appointment and customer")
+            cc.update_customer(customer)
+            return self.model.update_appointment(appointment, customer.id)
 
-            self.model.update_appointment(old_appointment, appointment)
-            return True
-        except Exception as e:
-            logger.log_error(f"Failer to update appointment with error {str(e)}")
-            return False
+        logger.log_warn("Request Failure")
+        return False
 
     def get_appointment_by_id(self, id: int) -> Appointment | None:
         """
@@ -158,15 +126,6 @@ class AppointmentControl:
         """
         logger.log_info(f"Requesting appointment by {date=}")
         return self.model.get_appointment_by_date(date)
-
-    def validate_appointment(self, appointment: Appointment | dict) -> bool:
-        """
-        Ελέγχει ότι τα στοιχεία της εγγραφής ειναι σωστά και ότι
-        δεν μπαίνει καινούριο ραντεβού σε περιόδο που είναι ήδη
-        γεμάτη.
-        """
-        # TODO λείπει όλη η υλοποίηση
-        return True
 
     def get_appointments_grouped_in_periods(
         self,

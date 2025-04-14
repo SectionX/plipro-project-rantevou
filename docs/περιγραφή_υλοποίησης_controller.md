@@ -20,8 +20,26 @@ Simple Mail Transfer Protocol, είναι ένα standard υλοποίησης �
 
 # Αρχιτεκτονική
 
-## Υπάρχει τουλάχιστον ένας controller για κάθε entity
-## Υπάρχει ξεχωριστός controller για joined queries
+## Model Controllers
+
+### class AppointmentControl, CustomerControl
+
+Υλοποιούν το μοτίβο Singleton, δηλαδή μπορεί να υπάρχει μόνο ένα instance αυτών σε όλο το πρόγραμμα.
+
+Φέρουν μεθόδους που επικοινωνούν με το μοντέλο ανάλογα τις ανάγκες του χρήστη. Η AppointmentControl είναι πιο ενεργή επειδή η εισαγωγή ραντεβού εμπεριέχει και εισαγωγή πελάτη, ενώ το αντίθετο δεν ισχύει.
+
 ## Logging
 Έγινε υλοποίηση ενός απλού logger που ακολουθεί κάποια από τα standards αλλά δεν χρησιμοποιεί το logging της python επειδή έχει μια ιδιαίτερη πολυπλοκότητα και πρέπει κάποιος να το ξέρει μέσα έξω για να ρυθμίσει σωστά την λειτουργία του
+
+### class Logger
+
+Λειτουργεί με βάση το μοντέλο DEBUG, INFO, WARN, ERROR. Με την ρύθμιση .level ορίζουμε ποιά logs θα εμφανίζονται στο terminal. Αυτόματα καταγράφει τα πάντα σε ένα αρχείο logs.txt. Κάνει αυτόματο zip ανα μέρα.
+
+## Mailing
+
+### class Mailer
+
+Συνδέεται με τον SMTP server της google και στέλνει emails χρησιμοποιόντας το template από /data/email_body.txt
+
+
 
