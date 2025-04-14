@@ -3,6 +3,7 @@ from typing import NamedTuple
 from .logging import Logger
 from tkinter import ttk
 from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
+from .customers_controller import CustomerControl
 
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
 # TODO: Πρέπει να ελεγχθούν όλοι οι είσοδοι ότι έχουν ορθά στοιχεία και να
@@ -64,9 +65,9 @@ class AppointmentControl:
             self.model.add_appointment(appointment)
             return
 
-        cmodel = CustomerModel()
+        cc = CustomerModel()
         existing_customer = (
-            cmodel.session.query(Customer)
+            cc.session.query(Customer)
             .filter(
                 Customer.name == customer.name,
                 Customer.surname == customer.surname,
@@ -77,7 +78,7 @@ class AppointmentControl:
         )
 
         if existing_customer is None:
-            id = cmodel.add_customer(customer)
+            id = cc.add_customer(customer)
             appointment.customer_id = id
         else:
             appointment.customer_id = existing_customer.id
@@ -125,18 +126,18 @@ class AppointmentControl:
             logger.log_error("Cannot update non existing appointment")
             return False
 
-        cmodel = CustomerModel()
+        cc = CustomerControl()
         try:
             if customer:
-                old_customer = cmodel.get_customer_by_email(customer.email)
+                old_customer = cc.get_customer_by_email(customer.email)
                 if old_customer is None:
-                    id = cmodel.add_customer(customer)
+                    id = cc.create_customer(customer)
                     appointment.customer_id = id
                     self.model.update_appointment(old_appointment, appointment)
                     return True
 
                 if old_customer != customer:
-                    cmodel.update_customer(customer)
+                    cc.update_customer(customer)
 
             self.model.update_appointment(old_appointment, appointment)
             return True

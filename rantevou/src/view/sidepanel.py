@@ -305,8 +305,6 @@ class AppointmentView(SideView):
                 appointment=None,
             ).pack(fill="x")
 
-        print(*caller_data, "\n", sep="\n")
-
 
 class AlertRow(ttk.Frame):
     appointment: Appointment | None
@@ -639,8 +637,11 @@ class EditAppointmentView(SideView):
             phone=self.cus_entry_phone.get_without_placeholder(),
             email=self.cus_entry_email.get_without_placeholder(),
         )
+        if self.customer is not None:
+            new_customer.id = self.customer.id
 
         if new_customer.name == None:
+            logger.log_info("Updating appointmenth without customer")
             result = ac.update_appointment(self.appointment, new_appointment)
         else:
             result = ac.update_appointment(
@@ -789,7 +790,7 @@ class AddAppointmentView(SideView):
             second=0,
             microsecond=0,
         )
-        duration = timedelta(int(self.app_entry_duration.get()))
+        duration = timedelta(minutes=int(self.app_entry_duration.get()))
 
         appointment = Appointment(date=date, duration=duration)
         customer = Customer(
@@ -893,15 +894,18 @@ class AddCustomerView(SideView):
         self.save_button.pack()
 
     def update_content(self):
-        pass
+        for entry in self.main_frame.winfo_children():
+            if isinstance(entry, EntryWithPlaceholder):
+                entry.delete(0, tk.END)
+                entry.put_placeholder()
 
     def save(self):
         cc.create_customer(
             Customer(
-                name=self.cus_entry_name.get(),
-                surname=self.cus_entry_surname.get(),
-                phone=self.cus_entry_phone.get(),
-                email=self.cus_entry_email.get(),
+                name=self.cus_entry_name.get_without_placeholder(),
+                surname=self.cus_entry_surname.get_without_placeholder(),
+                phone=self.cus_entry_phone.get_without_placeholder(),
+                email=self.cus_entry_email.get_without_placeholder(),
             )
         )
 

@@ -1,0 +1,119 @@
+DEBUG - [2025-04-14 07:06:00]: Excecuting query of all appointments - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting sorting of cached appointments - appointment-model
+DEBUG - [2025-04-14 07:06:00]: Excecuting query of all appointments - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting sorting of cached appointments - appointment-model
+INFO - [2025-04-14 07:06:00]: Requesting list of appointments - appointments_controller
+DEBUG - [2025-04-14 07:06:00]: Excecuting query of all appointments - appointment-model
+DEBUG - [2025-04-14 07:06:00]: Requesting model to split appointments in groups for start=datetime.datetime(2025, 4, 14, 9, 0), period=datetime.timedelta(seconds=7200) - appointments_controller
+DEBUG - [2025-04-14 07:06:00]: Excecuting query of split appointments by period=datetime.timedelta(seconds=7200) with start date=2025-04-14 09:00:00 - appointment-model
+DEBUG - [2025-04-14 07:06:00]: Excecuting query of all appointments - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting sorting of cached appointments - appointment-model
+INFO - [2025-04-14 07:06:00]: Starting Rantevou - main
+INFO - [2025-04-14 07:06:00]: Requesting subscription for .!notebook.!appointmentstab - appointments_controller
+INFO - [2025-04-14 07:06:00]: Adding subscriber=<rantevou.src.view.appointments.AppointmentsTab object .!notebook.!appointmentstab> - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting subscription of .!notebook.!appointmentstab - customer-model
+INFO - [2025-04-14 07:06:00]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:00]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell - customer-model
+INFO - [2025-04-14 07:06:00]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:00]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:00]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:00]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:00]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:00]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:00]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn2.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn3.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn4.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn5.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn6.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell2 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell2> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell2 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell3 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell3> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell3 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell4 - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.appointments.GridCell object .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell4> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!appointmentstab.!grid.!gridcolumn7.!gridcell4 - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!customerstab - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.customers.CustomersTab object .!notebook.!customerstab> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!customerstab - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!notebook.!customerstab.!customersheet - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.customers.CustomerSheet object .!notebook.!customerstab.!customersheet> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!notebook.!customerstab.!customersheet - customer-model
+INFO - [2025-04-14 07:06:01]: Requesting subscription for .!sidepanel.!alertsview - appointments_controller
+INFO - [2025-04-14 07:06:01]: Adding subscriber=<rantevou.src.view.sidepanel.AlertsView object .!sidepanel.!alertsview> - appointment-model
+INFO - [2025-04-14 07:06:01]: Excecuting subscription of .!sidepanel.!alertsview - customer-model
+INFO - [2025-04-14 07:06:07]: Showing appointment creation panel with data (datetime.datetime(2025, 4, 14, 10, 0), datetime.timedelta(seconds=1200)) - sidepanel
+INFO - [2025-04-14 07:06:08]: Requesting new appointment creation appointment=Appointment(id=None, date=2025-04-14 10:00:00, customer_id=None, duration=(0:20:00)), customer=Customer(id=None, name=None, surname=None, email=None, phone=None) - appointments_controller
+INFO - [2025-04-14 07:06:08]: Excecuting creation of Customer(id=None, name=None, surname=None, email=None, phone=None) - customer-model
+ERROR - [2025-04-14 07:06:08]: (sqlite3.IntegrityError) NOT NULL constraint failed: customer.name
+[SQL: INSERT INTO customer (name, surname, email, phone) VALUES (?, ?, ?, ?)]
+[parameters: (None, None, None, None)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj) - customer-model
+INFO - [2025-04-14 07:06:08]: Excecuting creation of new appointment=Appointment(id=None, date=2025-04-14 10:00:00, customer_id=None, duration=(0:20:00)) - appointment-model
+INFO - [2025-04-14 07:06:08]: Assigned id=1 - appointment-model
+INFO - [2025-04-14 07:06:08]: Excecuting cache addition - appointment-model
+INFO - [2025-04-14 07:06:08]: Excecuting notification of 32 subscribers - appointment-model
+INFO - [2025-04-14 07:06:08]: Requesting list of appointments - appointments_controller

@@ -412,6 +412,10 @@ class AppointmentModel:
         """
         logger.log_info(f"Excecuting cache addition")
 
+        if len(self.appointments) == 0:
+            self.appointments.append(target)
+            return
+
         # Μικρό optimization εφόσον οι νέες προσθήκες γίνονται σε νεότερες
         # ημερομηνίες και το cache είναι sorted κατα ημερομηνία
         for i in range(len(self.appointments) - 1, -1, -1):

@@ -97,7 +97,6 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.column("id", width=0, stretch=tk.NO)
 
         self.populate_sheet()
-        print(*self.winfo_children(), sep="\n")
 
     def subscriber_update(self):
         self.populate_sheet()

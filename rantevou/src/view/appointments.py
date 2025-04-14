@@ -260,8 +260,8 @@ class GridCell(ttk.Frame, SubscriberInterface):
         appointments = AppointmentsTab.appointment_groups[self.group_index + 1]
         if len(appointments) == 0:
             return Appointment(
-                date=self.period_end + timedelta(minutes=120),
-                duration=timedelta(minutes=20),
+                date=self.period_end + timedelta(minutes=0),
+                duration=timedelta(minutes=0),
             )
         return appointments[0]
 
