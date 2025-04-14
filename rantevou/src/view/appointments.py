@@ -21,6 +21,7 @@ ac = AppointmentControl()
 cc = CustomerControl()
 cfg: dict[str, Any] = get_config()["view_settings"]
 cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
+cfgb = get_config()["buttons"]
 
 
 class SubscriberInterface:
@@ -232,17 +233,18 @@ class GridCell(ttk.Frame, SubscriberInterface):
         *args,
         **kwargs,
     ):
-        ttk.Frame.__init__(self, root, *args, **kwargs)
+        super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
-        self.config(style="primary.TFrame")
 
         self.group_index = appointment_group_index
         self.period_start = period_start
         self.period_duration = period_duration
         self.period_end = period_start + period_duration
-        self.text = ttk.Label(self, style="primary.TLabel")
+
+        self.text = ttk.Label(self)
         self.text.pack(fill="both", expand=True, padx=3, pady=3)
         self.text.bind("<Button-1>", lambda x: self.show_in_sidepanel())
+
         self.draw()
 
     @property
@@ -254,7 +256,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
         appointments = AppointmentsTab.appointment_groups[self.group_index + 1]
         if len(appointments) == 0:
             return Appointment(
-                date=self.period_end + timedelta(days=3600),
+                date=self.period_end + timedelta(minutes=120),
                 duration=timedelta(minutes=20),
             )
         return appointments[0]
@@ -288,9 +290,16 @@ class GridCell(ttk.Frame, SubscriberInterface):
             for _, td in times_between
             if td >= timedelta(minutes=minimum)
         ]
+        if appointment_count <= 1:
+            self.text.config(style="low.TLabel")
+        elif appointment_count == 2:
+            self.text.config(style="medium.TLabel")
+        elif appointment_count == 3:
+            self.text.config(style="high.TLabel")
+        elif appointment_count > 3:
+            self.text.config(style="max.TLabel")
 
-        text = f"Ραντεβού:\n{appointment_count}\n" f"{len(slots)} θέσεις"
-
+        text = f"Ραντεβού:{appointment_count}\n" f"{len(slots)} θέσεις"
         self.text.config(text=text)
 
     def move_left(self):
@@ -337,7 +346,5 @@ class GridCell(ttk.Frame, SubscriberInterface):
                 )
             )
         appointments.append(last)
-
-        print(*temp, "\n", sep="\n")
 
         SidePanel.select_view(view="appointments", caller=self, data=appointments[1:-1])

@@ -108,4 +108,23 @@ class Window(tk.Tk):
         )
         style.configure("primary.TFrame", background=pbackground)
 
-        # appointment sidepanel
+        # buttons
+
+        style.configure(
+            "low.TLabel",
+            background=cfg["buttons"]["low"],
+        )
+        style.configure(
+            "medium.TLabel",
+            background=cfg["buttons"]["medium"],
+        )
+        style.configure(
+            "high.TLabel",
+            background=cfg["buttons"]["high"],
+        )
+        style.configure(
+            "max.TLabel",
+            background=cfg["buttons"]["max"],
+        )
+        style.configure("edit.TButton", background=cfg["buttons"]["max"])
+        style.configure("add.TButton", background=cfg["buttons"]["medium"])

@@ -222,8 +222,10 @@ class AppointmentViewButton(ttk.Button):
         self.expiration_date = expiration_date
 
         if self.appointment:
-            self.config(text=str(self.appointment.date), command=self.edit_appointment)
+            text = f"{self.appointment.date.strftime('%H:%M')}-{self.appointment.end_date.strftime('%H:%M')}"
+            self.config(text=text, style="edit.TButton")
         else:
+            self.config(style="add.TButton")
             self.create_add_button()
 
     def create_add_button(self):
@@ -238,6 +240,7 @@ class AppointmentViewButton(ttk.Button):
         if self.duration == timedelta(0):
             self.after(0, self.forget)
             return
+
         self.config(
             text=f"Add new: {str(int(self.duration.total_seconds() // 60))}",
             command=self.add_appointment,
@@ -289,7 +292,7 @@ class AppointmentView(SideView):
                     duration=appointment.duration,
                     expiration_date=appointment.end_date,
                     appointment=appointment,
-                ).pack()
+                ).pack(fill="x")
                 continue
 
             AppointmentViewButton(
@@ -299,61 +302,7 @@ class AppointmentView(SideView):
                 appointment=None,
             ).pack(fill="x")
 
-        # logger.log_info(f"Showing appointment data {caller_data}")
-
-        # if not (isinstance(caller_data, tuple) and len(caller_data) == 3):
-        #     logger.log_error("Appointment data are wrong")
-        #     return
-
-        # appointments: list[Appointment] = caller_data[0]
-        # if not isinstance(appointments, list):
-        #     logger.log_error(f"Appointment data are wrong")
-        #     return
-
-        # first_of_next_period: Appointment = caller_data[1]
-        # if not isinstance(first_of_next_period, Appointment):
-        #     logger.log_error(f"Appointment data are wrong")
-        #     return
-
-        # period_start: datetime = caller_data[2]
-        # if not isinstance(period_start, datetime):
-        #     logger.log_error(f"Appointment data are wrong")
-        #     return
-
-        # if len(appointments) == 0:
-        #     min_duration = cfg["minimum_appointment_duration"]
-        #     expiration = period_start + cfg["period_duration"]
-        #     AppointmentViewButton(
-        #         self.main_frame,
-        #         appointment=None,
-        #         duration=timedelta(minutes=min_duration),
-        #         expiration_date=period_start + timedelta(minutes=expiration),
-        #     ).pack(fill="x", padx=1, pady=1)
-        #     return
-
-        # appointments = appointments + [first_of_next_period]
-
-        # date = period_start
-        # for i, appointment in enumerate(appointments, 1):
-        #     delta = appointment.time_between_dates(date)
-        #     AppointmentViewButton(
-        #         self.main_frame,
-        #         appointment=None,
-        #         duration=delta,
-        #         expiration_date=appointment.date,
-        #     ).pack(fill="x", padx=1, pady=1)
-
-        #     if i == len(appointments):
-        #         break
-
-        #     AppointmentViewButton(
-        #         self.main_frame,
-        #         appointment=appointment,
-        #         duration=appointment.duration,
-        #         expiration_date=appointment.end_date,
-        #     ).pack(fill="x", padx=1, pady=1)
-
-        #     date = appointment.end_date
+        print(*caller_data, "\n", sep="\n")
 
 
 class AlertRow(ttk.Frame):
