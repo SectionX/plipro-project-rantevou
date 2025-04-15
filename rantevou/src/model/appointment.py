@@ -73,6 +73,10 @@ class Appointment(Base):
         )
 
     @property
+    def values(self) -> tuple[int, datetime, bool, timedelta, int | None]:
+        return (self.id, self.date, self.is_alerted, self.duration, self.customer_id)
+
+    @property
     def end_date(self) -> datetime:
         """
         Υπολογίζει την ακριβή ημερομηνία που θα πρέπει να έχει
@@ -261,9 +265,18 @@ class AppointmentModel:
     def delete_appointment(self, appointment: Appointment) -> bool:
         logger.log_info(f"Excecuting deletion of {appointment=}")
 
+        if appointment.id is None:
+            logger.log_error("Appointment for deletion must have an id")
+            return False
+
+        appointment_to_delete = self.get_appointment_by_id(appointment.id)
+        if appointment_to_delete is None:
+            logger.log_error("Failed to locate appointment in db")
+            return False
+
         # Διαγραφή του στοιχείου από την βάση δεδομένων
         try:
-            self.session.delete(appointment)
+            self.session.delete(appointment_to_delete)
             self.session.commit()
         except Exception as e:
             logger.log_error(str(e))
@@ -271,7 +284,7 @@ class AppointmentModel:
             return False
 
         # Ενημέρωση του cache
-        self.appointments.remove(appointment)
+        self.appointments.remove(appointment_to_delete)
         if len(self.appointments) == 0:
             self.max_id = 0
         else:

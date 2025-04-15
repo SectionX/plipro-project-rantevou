@@ -92,14 +92,14 @@ class SidePanel(ttk.Notebook):
         if isinstance(caller, Caller) and not self.back:
             self.caller_stack.append(caller)
             self.back = False
-        print(self.caller_stack)
 
     def go_back(self):
         self.back = True
         if len(self.caller_stack) == 0:
             self.select_view("alerts")
             return
-        self.caller_stack.pop().show_in_sidepanel()
+        caller = self.caller_stack.pop()
+        caller.show_in_sidepanel()
 
 
 # class SidePanel(ttk.Frame):

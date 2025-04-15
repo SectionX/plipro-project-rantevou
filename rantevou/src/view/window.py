@@ -56,7 +56,7 @@ class Window(tk.Tk):
         self.style_config()
         self.title(title)
         self.tabs = Notebook(self)
-        self.side_panel = SidePanel(self, width=200)
+        self.side_panel = SidePanel(self, width=250)
         self.search_bar = SearchBar(self)
 
         self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
@@ -85,7 +85,7 @@ class Window(tk.Tk):
 
         self.grid_rowconfigure(0, weight=4)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1, minsize=200)
+        self.grid_columnconfigure(1, weight=2, minsize=250)
 
         self.tabs.grid(column=0, row=0, rowspan=2, sticky="nsew")
         self.side_panel.grid(column=1, row=0, stick="nse", pady=10, padx=5)
