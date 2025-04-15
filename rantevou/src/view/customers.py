@@ -28,7 +28,7 @@ class SubscriberInterface:
 
 @runtime_checkable
 class PopulateFromCustomer(Protocol):
-    def populate_from_customer_tab(self): ...
+    def populate_from_customer_tab(self, customer_data: Any | None): ...
 
 
 class SearchBar(ttk.Frame):
@@ -83,10 +83,12 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
     column_names: list[str]
     focus_values: list[Any] | Literal[""]
     focus_column_index: int
+    sidepanel: SidePanel
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         SubscriberInterface.__init__(self)
+        self.sidepanel = self.nametowidget(".!sidepanel")
         self.focus_values = []
         self.focus_column_index = 0
         self.column_names = Customer.field_names()
@@ -132,17 +134,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.heading(colname, command=lambda: self.sort(not reverse))
 
     def populate_appointment_view(self, *args):
-        return
-        SidePanel.update_data("customer_data", self.focus_values)
-        sidepanel = SidePanel.instance()
-        if sidepanel is None:
-            logger.log_warn("Failed to communicate with SidePanel")
-            return
-
-        side_view = SidePanel.get_active_view()
+        side_view = self.sidepanel.active_view
         if isinstance(side_view, PopulateFromCustomer):
             try:
-                side_view.populate_from_customer_tab()
+                side_view.populate_from_customer_tab(self.focus_values)
             except:
                 logger.log_error(f"Failed to communicate with {side_view}")
 
@@ -152,9 +147,11 @@ class ManagementBar(ttk.Frame):
     edit_button: ttk.Button
     del_button: ttk.Button
     sheet: CustomerSheet
+    sidepanel: SidePanel
 
     def __init__(self, master, sheet: CustomerSheet, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
+        self.sidepanel = self.nametowidget(".!sidepanel")
         self.sheet = sheet
         self.button_frame = ttk.Frame(self)
         self.add_button = ttk.Button(
@@ -173,13 +170,13 @@ class ManagementBar(ttk.Frame):
         self.del_button.pack(side=tk.LEFT)
 
     def add_customer(self):
-        return
-        SidePanel.select_view("addc")
+        self.sidepanel.select_view("addc", caller=self, caller_data=None)
         # TODO update treeview instead of reloading
 
     def edit_customer(self):
-        return
-        SidePanel.select_view("editc", caller=self, data=self.sheet.focus_values)
+        self.sidepanel.select_view(
+            "editc", caller=self, caller_data=self.sheet.focus_values
+        )
 
     def del_customer(self):
         id = int(self.sheet.focus_values[0])

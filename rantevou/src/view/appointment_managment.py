@@ -175,9 +175,8 @@ class EditAppointmentView(SideView):
             if isinstance(v, ttk.Entry):
                 v.delete(0, tk.END)
 
-    def populate_from_customer_tab(self):
-        raise NotImplementedError
-        data = self.sidepanel.fetch_data("customer_data")
+    def populate_from_customer_tab(self, customer_data):
+        data = customer_data
         if not isinstance(data, list):
             logger.log_error("Data from customer was wrong type")
             return
@@ -194,151 +193,147 @@ class EditAppointmentView(SideView):
         self.appointment.customer_id = int(id)
 
 
-# class AddAppointmentView(abstract_views.SideView):
-#     name: str = "add"
-#     field_day: ttk.Entry
-#     field_hour: ttk.Entry
-#     field_minute: ttk.Entry
-#     field_customer: ttk.Entry
+class AddAppointmentView(SideView):
+    name: str = "add"
+    field_day: ttk.Entry
+    field_hour: ttk.Entry
+    field_minute: ttk.Entry
+    field_customer: ttk.Entry
 
-#     def __init__(self, root, *args, **kwargs):
-#         super().__init__(root, *args, **kwargs)
-#         self.name = self.__class__.name
-#         self.set_title("Προσθήκη νέου ραντεβού")
-#         self.main_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
-#         self.main_frame.pack(fill="both", expand=True)
-#         self.add_back_btn(self)
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
+        self.name = self.__class__.name
+        self.set_title("Προσθήκη νέου ραντεβού")
+        self.main_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
+        self.main_frame.pack(fill="both", expand=True)
+        self.back_btn.config(command=self.sidepanel.go_back)
 
-#         self.appointment = None
-#         self.customer = None
+        self.appointment = None
+        self.customer = None
 
-#         year, month, day, *_ = self.date_to_string(datetime.now())
-#         duration = "20"  # TODO να έρχεται από το config file
+        year, month, day, *_ = self.date_to_string(datetime.now())
+        duration = "20"  # TODO να έρχεται από το config file
 
-#         self.date_frame = ttk.Frame(self.main_frame)
-#         self.date_frame.pack()
+        self.date_frame = ttk.Frame(self.main_frame)
+        self.date_frame.pack()
 
-#         self.app_entry_day = EntryWithPlaceholder(self.date_frame, placeholder="")
-#         self.app_entry_day.pack(side=tk.LEFT)
-#         ttk.Label(self.date_frame, text="/").pack(
-#             side=tk.LEFT,
-#         )
-#         self.app_entry_month = EntryWithPlaceholder(self.date_frame, placeholder="")
-#         self.app_entry_month.pack(side=tk.LEFT)
-#         ttk.Label(self.date_frame, text="/").pack(
-#             side=tk.LEFT,
-#         )
-#         self.app_entry_year = EntryWithPlaceholder(self.date_frame, placeholder="")
-#         self.app_entry_year.pack(side=tk.LEFT)
+        self.app_entry_day = EntryWithPlaceholder(self.date_frame, placeholder="")
+        self.app_entry_day.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(
+            side=tk.LEFT,
+        )
+        self.app_entry_month = EntryWithPlaceholder(self.date_frame, placeholder="")
+        self.app_entry_month.pack(side=tk.LEFT)
+        ttk.Label(self.date_frame, text="/").pack(
+            side=tk.LEFT,
+        )
+        self.app_entry_year = EntryWithPlaceholder(self.date_frame, placeholder="")
+        self.app_entry_year.pack(side=tk.LEFT)
 
-#         self.hour_frame = ttk.Frame(self.main_frame)
-#         self.hour_frame.pack()
+        self.hour_frame = ttk.Frame(self.main_frame)
+        self.hour_frame.pack()
 
-#         self.app_entry_hour = EntryWithPlaceholder(self.hour_frame, placeholder="")
-#         self.app_entry_hour.pack(side=tk.LEFT)
-#         ttk.Label(self.hour_frame, text=":").pack(side=tk.LEFT)
-#         self.app_entry_minutes = EntryWithPlaceholder(self.hour_frame, placeholder="")
-#         self.app_entry_minutes.pack(side=tk.LEFT)
+        self.app_entry_hour = EntryWithPlaceholder(self.hour_frame, placeholder="")
+        self.app_entry_hour.pack(side=tk.LEFT)
+        ttk.Label(self.hour_frame, text=":").pack(side=tk.LEFT)
+        self.app_entry_minutes = EntryWithPlaceholder(self.hour_frame, placeholder="")
+        self.app_entry_minutes.pack(side=tk.LEFT)
 
-#         self.app_entry_duration = EntryWithPlaceholder(
-#             self.main_frame, placeholder=duration
-#         )
-#         self.app_entry_duration.pack(fill="x")
-#         self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
-#         self.cus_entry_name.pack(fill="x")
-#         self.cus_entry_surname = EntryWithPlaceholder(
-#             self.main_frame, placeholder="surname"
-#         )
-#         self.cus_entry_surname.pack(fill="x")
-#         self.cus_entry_phone = EntryWithPlaceholder(
-#             self.main_frame, placeholder="phone number"
-#         )
-#         self.cus_entry_phone.pack(fill="x")
-#         self.cus_entry_email = EntryWithPlaceholder(
-#             self.main_frame, placeholder="email address"
-#         )
-#         self.cus_entry_email.pack(fill="x")
-#         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
-#         self.save_button.pack()
+        self.app_entry_duration = EntryWithPlaceholder(
+            self.main_frame, placeholder=duration
+        )
+        self.app_entry_duration.pack(fill="x")
+        self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
+        self.cus_entry_name.pack(fill="x")
+        self.cus_entry_surname = EntryWithPlaceholder(
+            self.main_frame, placeholder="surname"
+        )
+        self.cus_entry_surname.pack(fill="x")
+        self.cus_entry_phone = EntryWithPlaceholder(
+            self.main_frame, placeholder="phone number"
+        )
+        self.cus_entry_phone.pack(fill="x")
+        self.cus_entry_email = EntryWithPlaceholder(
+            self.main_frame, placeholder="email address"
+        )
+        self.cus_entry_email.pack(fill="x")
+        self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
+        self.save_button.pack()
 
-#     def date_to_string(self, date: datetime) -> list[str]:
-#         datestring = date.strftime("%Y_%m_%d_%H_%M_%S")
-#         return datestring.split("_")
+    def date_to_string(self, date: datetime) -> list[str]:
+        datestring = date.strftime("%Y_%m_%d_%H_%M_%S")
+        return datestring.split("_")
 
-#     def update_content(self):
-#         data = sidepanel.SidePanel.fetch_data("caller_data")
-#         self.previous_caller = sidepanel.SidePanel.fetch_data("caller")
+    def update_content(self, caller, caller_data):
+        logger.log_info(f"Showing appointment creation panel with data {caller_data}")
 
-#         logger.log_info(f"Showing appointment creation panel with data {data}")
+        if not isinstance(caller_data, tuple):
+            logger.log_warn("Wrong data")
+            return
 
-#         if not isinstance(data, tuple):
-#             logger.log_warn("Wrong data")
-#             return
+        if not isinstance(caller_data[0], datetime):
+            logger.log_warn("Wrong data")
+            return
 
-#         if not isinstance(data[0], datetime):
-#             logger.log_warn("Wrong data")
-#             return
+        if not isinstance(caller_data[1], timedelta):
+            logger.log_warn("Wrong data")
+            return
 
-#         if not isinstance(data[1], timedelta):
-#             logger.log_warn("Wrong data")
-#             return
+        date = caller_data[0]
+        duration = caller_data[1]
 
-#         date = data[0]
-#         duration = data[1]
+        year, month, day, hour, minute, *_ = self.date_to_string(date)
+        self.app_entry_year.placeholder = year
+        self.app_entry_month.placeholder = month
+        self.app_entry_day.placeholder = day
+        self.app_entry_hour.placeholder = hour
+        self.app_entry_minutes.placeholder = minute
+        self.app_entry_duration.placeholder = str(int(duration.total_seconds() // 60))
+        self.reset()
 
-#         year, month, day, hour, minute, *_ = self.date_to_string(date)
-#         self.app_entry_year.placeholder = year
-#         self.app_entry_month.placeholder = month
-#         self.app_entry_day.placeholder = day
-#         self.app_entry_hour.placeholder = hour
-#         self.app_entry_minutes.placeholder = minute
-#         self.app_entry_duration.placeholder = str(int(duration.total_seconds() // 60))
-#         self.reset()
+    def save(self):
+        date = datetime(
+            year=int(self.app_entry_year.get()),
+            month=int(self.app_entry_month.get()),
+            day=int(self.app_entry_day.get()),
+            hour=int(self.app_entry_hour.get()),
+            minute=int(self.app_entry_minutes.get()),
+            second=0,
+            microsecond=0,
+        )
+        duration = timedelta(minutes=int(self.app_entry_duration.get()))
 
-#     def save(self):
-#         date = datetime(
-#             year=int(self.app_entry_year.get()),
-#             month=int(self.app_entry_month.get()),
-#             day=int(self.app_entry_day.get()),
-#             hour=int(self.app_entry_hour.get()),
-#             minute=int(self.app_entry_minutes.get()),
-#             second=0,
-#             microsecond=0,
-#         )
-#         duration = timedelta(minutes=int(self.app_entry_duration.get()))
+        appointment = Appointment(date=date, duration=duration)
+        customer = Customer(
+            name=self.cus_entry_name.get_without_placeholder(),
+            surname=self.cus_entry_surname.get_without_placeholder(),
+            phone=self.cus_entry_phone.get_without_placeholder(),
+            email=self.cus_entry_email.get_without_placeholder(),
+        )
+        ac.create_appointment(appointment, customer)
+        self.sidepanel.go_back()
 
-#         appointment = Appointment(date=date, duration=duration)
-#         customer = Customer(
-#             name=self.cus_entry_name.get_without_placeholder(),
-#             surname=self.cus_entry_surname.get_without_placeholder(),
-#             phone=self.cus_entry_phone.get_without_placeholder(),
-#             email=self.cus_entry_email.get_without_placeholder(),
-#         )
-#         ac.create_appointment(appointment, customer)
-#         sidepanel.SidePanel.go_back()
+    def populate_from_customer_tab(self, customer_data):
+        if not isinstance(customer_data, list):
+            logger.log_warn("Failed to communicate customer data")
+            return
 
-#     def populate_from_customer_tab(self):
-#         customer_data = sidepanel.SidePanel.fetch_data("customer_data")
-#         if not isinstance(customer_data, list):
-#             logger.log_warn("Failed to communicate customer data")
-#             return
+        if len(customer_data) < 5:
+            logger.log_warn("Failed to communicate customer data")
+            return
 
-#         if len(customer_data) < 5:
-#             logger.log_warn("Failed to communicate customer data")
-#             return
+        self.cus_entry_name.delete(0, tk.END)
+        self.cus_entry_surname.delete(0, tk.END)
+        self.cus_entry_phone.delete(0, tk.END)
+        self.cus_entry_email.delete(0, tk.END)
 
-#         self.cus_entry_name.delete(0, tk.END)
-#         self.cus_entry_surname.delete(0, tk.END)
-#         self.cus_entry_phone.delete(0, tk.END)
-#         self.cus_entry_email.delete(0, tk.END)
+        self.cus_entry_name.insert(0, customer_data[1])
+        self.cus_entry_surname.insert(0, customer_data[2])
+        self.cus_entry_phone.insert(0, customer_data[3])
+        self.cus_entry_email.insert(0, customer_data[4])
 
-#         self.cus_entry_name.insert(0, customer_data[1])
-#         self.cus_entry_surname.insert(0, customer_data[2])
-#         self.cus_entry_phone.insert(0, customer_data[3])
-#         self.cus_entry_email.insert(0, customer_data[4])
-
-#     def reset(self):
-#         for k, v in self.__dict__.items():
-#             if isinstance(v, EntryWithPlaceholder):
-#                 v.delete(0, tk.END)
-#                 v.put_placeholder()
+    def reset(self):
+        for k, v in self.__dict__.items():
+            if isinstance(v, EntryWithPlaceholder):
+                v.delete(0, tk.END)
+                v.put_placeholder()

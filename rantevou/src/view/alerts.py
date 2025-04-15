@@ -122,10 +122,10 @@ class AlertsView(SideView, SubscriberInterface):
         super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
         self.name = self.__class__.name
-        self.sidepanel = root
         self.set_title("Ειδοποιήσεις")
         self.appointments = []
         self.rows = []
+        self.back_btn.destroy()
 
     def update_content(self, *args, **kwargs):
         self.appointments = ac.get_appointments_from_to_date(

@@ -69,6 +69,8 @@ class SidePanel(ttk.Notebook):
         self.config(style="side.TNotebook")
         self.view_index = 0
         self.caller_stack = deque(maxlen=10)
+        self.back = False
+        self.active_view: SideView
 
     def register_view(self, widget: SideView, name: str):
         self.views[name] = (widget, self.view_index)
@@ -84,12 +86,19 @@ class SidePanel(ttk.Notebook):
     def select_view(
         self, name: str, caller: Any | None = None, caller_data: Any | None = None
     ):
+        self.active_view = self.get_view(name)
+        self.active_view.update_content(caller, caller_data)
         self.select(self.get_index(name))
-        self.get_view(name).update_content(caller, caller_data)
-        if isinstance(caller, Caller):
+        if isinstance(caller, Caller) and not self.back:
             self.caller_stack.append(caller)
+            self.back = False
+        print(self.caller_stack)
 
     def go_back(self):
+        self.back = True
+        if len(self.caller_stack) == 0:
+            self.select_view("alerts")
+            return
         self.caller_stack.pop().show_in_sidepanel()
 
 
@@ -216,9 +225,11 @@ class SearchBar(ttk.Frame):
     button: ttk.Button
     duration: timedelta
     search_results: list[tuple[datetime, timedelta]]
+    sidepanel: SidePanel
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
+        self.sidepanel = self.nametowidget(".!sidepanel")
         self.inputframe = ttk.Frame(self)
         self.label = ttk.Label(self.inputframe, text="Διάρκεια")
         self.entry = ttk.Entry(self.inputframe)
@@ -241,7 +252,6 @@ class SearchBar(ttk.Frame):
         self.search_results = ac.get_time_between_appointments(
             start_date=datetime.now(), minumum_free_period=self.duration
         )
-        return
-        SidePanel.select_view(
-            "search", caller=self, data=(self.search_results, self.duration)
+        self.sidepanel.select_view(
+            "search", caller=self, caller_data=(self.search_results, self.duration)
         )

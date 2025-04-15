@@ -34,7 +34,7 @@ class AppointmentViewButton(ttk.Button):
         **kwargs,
     ):
         super().__init__(master, *args, **kwargs)
-        self.sidepanel = master.master.sidepanel
+        self.sidepanel: SidePanel = master.master.sidepanel
         self.appointment = appointment
         self.duration = duration
         self.expiration_date = expiration_date
@@ -70,12 +70,12 @@ class AppointmentViewButton(ttk.Button):
     def add_appointment(self):
         self.sidepanel.select_view(
             "add",
-            caller=self.master,
-            data=(self.expiration_date - self.duration, self.duration),
+            caller=self,
+            caller_data=(self.expiration_date - self.duration, self.duration),
         )
 
     def edit_appointment(self):
-        self.sidepanel.select_view("edit", caller=self.master, data=self.appointment)
+        self.sidepanel.select_view("edit", caller=self, caller_data=self.appointment)
 
 
 class AppointmentView(abstract_views.SideView):
