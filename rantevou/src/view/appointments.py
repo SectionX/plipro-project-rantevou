@@ -354,4 +354,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
                 date += timedelta(minutes=20)
         appointments.append(last)
 
-        SidePanel.select_view(view="appointments", caller=self, data=appointments[1:-1])
+        sidepanel = self.nametowidget(".!sidepanel")
+        if isinstance(sidepanel, SidePanel):
+            sidepanel.select_view("appointments", self, appointments[1:-1])

@@ -18,6 +18,10 @@ from .statistics import Statistics
 from .sidepanel import SidePanel
 from ..controller import get_config
 
+from .alerts import AlertsView
+from .appointment_managment import EditAppointmentView
+from .appointment_view import AppointmentView
+
 cfg = get_config()
 
 color1 = cfg["color_pallete"]["background"]
@@ -63,6 +67,10 @@ class Window(tk.Tk):
         )
 
         self.side_panel = SidePanel(self, style="primary.TFrame", width=200)
+        self.side_panel.register_view(AlertsView(self.side_panel), "alerts")
+        self.side_panel.register_view(EditAppointmentView(self.side_panel), "edit")
+        self.side_panel.register_view(AppointmentView(self.side_panel), "appointments")
+        self.side_panel.select_view("alerts")
 
         self.grid_rowconfigure(0, weight=4)
         self.grid_columnconfigure(0, weight=1)

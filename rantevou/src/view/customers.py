@@ -132,6 +132,7 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.heading(colname, command=lambda: self.sort(not reverse))
 
     def populate_appointment_view(self, *args):
+        return
         SidePanel.update_data("customer_data", self.focus_values)
         sidepanel = SidePanel.instance()
         if sidepanel is None:
@@ -172,10 +173,12 @@ class ManagementBar(ttk.Frame):
         self.del_button.pack(side=tk.LEFT)
 
     def add_customer(self):
+        return
         SidePanel.select_view("addc")
         # TODO update treeview instead of reloading
 
     def edit_customer(self):
+        return
         SidePanel.select_view("editc", caller=self, data=self.sheet.focus_values)
 
     def del_customer(self):
