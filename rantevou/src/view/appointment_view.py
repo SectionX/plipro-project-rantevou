@@ -14,6 +14,7 @@ from ..model.types import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
+from ..controller.exceptions import *
 
 #
 ac = AppointmentControl()
@@ -22,45 +23,45 @@ mailer = Mailer()
 
 
 class AppointmentViewButton(ttk.Button):
-    appointment: Appointment | None
+    appointment: Appointment
 
     def __init__(
         self,
         master,
-        duration: timedelta,
-        expiration_date: datetime,
         *args,
-        appointment: Appointment | None = None,
         **kwargs,
     ):
         super().__init__(master, *args, **kwargs)
         self.sidepanel: SidePanel = master.master.sidepanel
-        self.appointment = appointment
-        self.duration = duration
-        self.expiration_date = expiration_date
 
-        if self.appointment:
-            text = f"{self.appointment.date.strftime('%H:%M')}-{self.appointment.end_date.strftime('%H:%M')}"
+    def set(self, appointment: Appointment):
+        self.appointment = appointment
+        if appointment.id:
+            text = f"{appointment.date.strftime('%H:%M')}-{appointment.end_date.strftime('%H:%M')}"
             self.config(text=text, style="edit.TButton", command=self.edit_appointment)
         else:
             self.config(style="add.TButton")
             self.create_add_button()
 
     def create_add_button(self):
-        time_to_expire = self.expiration_date - datetime.now()
+        date = self.appointment.date
+        duration = self.appointment.duration
+        end_date = self.appointment.end_date
+
+        time_to_expire = end_date - datetime.now()
         if time_to_expire < timedelta(0):
             time_to_expire = timedelta(0)
 
-        if self.expiration_date < datetime.now():
-            self.after(int(time_to_expire.total_seconds() * 1000), self.forget)
+        if end_date < datetime.now():
+            self.after(0, self.destroy)
             return
 
-        if self.duration == timedelta(0):
-            self.after(0, self.forget)
+        if duration == timedelta(0):
+            self.after(0, self.destroy)
             return
 
-        start = (self.expiration_date - self.duration).strftime("%H:%M")
-        minutes = f"{int(self.duration.total_seconds() // 60)} λεπτά"
+        start = date.strftime("%H:%M")
+        minutes = f"{int(duration.total_seconds() // 60)} λεπτά"
 
         self.config(
             text=f"{start}: {minutes}",
@@ -71,7 +72,7 @@ class AppointmentViewButton(ttk.Button):
         self.sidepanel.select_view(
             "add",
             caller=self,
-            caller_data=(self.expiration_date - self.duration, self.duration),
+            caller_data=(self.appointment.date, self.appointment.duration),
         )
 
     def edit_appointment(self):
@@ -96,29 +97,35 @@ class AppointmentView(abstract_views.SideView):
         self.back_btn.config(command=master.go_back)
 
     def update_content(self, caller, caller_data):
-        for button in tuple(self.main_frame.children.values()):
-            button.destroy()
+        if not isinstance(caller_data, list):
+            raise ViewWrongDataError(caller_data)
 
-        if not (
-            isinstance(caller_data, list) and isinstance(caller_data[0], Appointment)
-        ):
-            logger.log_warn("Wrong data")
+        if len(caller_data) == 0:
             return
 
-        appointment: Appointment
-        for appointment in caller_data:
-            if appointment.id is not None:
-                AppointmentViewButton(
-                    self.main_frame,
-                    duration=appointment.duration,
-                    expiration_date=appointment.end_date,
-                    appointment=appointment,
-                ).pack(fill="x")
-                continue
+        if not isinstance(caller_data[0], Appointment):
+            raise ViewWrongDataError(caller_data[0])
 
-            AppointmentViewButton(
-                self.main_frame,
-                duration=appointment.duration,
-                expiration_date=appointment.end_date,
-                appointment=None,
-            ).pack(fill="x")
+        buttons: list[AppointmentViewButton] = []
+        for widget in self.main_frame.children.values():
+            if isinstance(widget, AppointmentViewButton):
+                buttons.append(widget)
+
+        app_len = len(caller_data)
+        but_len = len(buttons)
+        diff = app_len - but_len
+
+        if diff > 0:
+            for i in range(diff):
+                AppointmentViewButton(self.main_frame).pack(fill="x")
+        else:
+            for _ in range(-diff):
+                buttons.pop().destroy()
+
+        buttons.clear()
+        for widget in self.main_frame.children.values():
+            if isinstance(widget, AppointmentViewButton):
+                buttons.append(widget)
+
+        for button, appointment in zip(buttons, caller_data, strict=True):
+            button.set(appointment)

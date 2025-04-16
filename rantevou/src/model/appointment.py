@@ -11,7 +11,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
@@ -56,6 +56,7 @@ class Appointment(Base):
     customer_id: Mapped[int | None] = mapped_column(
         ForeignKey("customer.id"), nullable=True
     )
+    employee_id: Mapped[int] = mapped_column(default=0)
 
     customer = relationship(
         "Customer",

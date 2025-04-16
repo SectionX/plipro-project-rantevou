@@ -2,9 +2,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Protocol
 from .session import Base, session
-from . import appointment
 from ..controller.logging import Logger
-from typing import List
 
 logger = Logger("customer-model")
 
@@ -77,6 +75,13 @@ class CustomerModel:
 
         return cls._instance
 
+    def sanitize(self, customer: Customer):
+        for k, v in customer.__dict__.items():
+            if k.startswith("_"):
+                continue
+            if isinstance(v, str) and v == "":
+                customer.__dict__[k] = None
+
     def is_similar(self, customer1: Customer, customer2: Customer) -> bool:
         return all(
             (
@@ -111,6 +116,11 @@ class CustomerModel:
         Επιστρέφει πλειάδα tuple(customer.id, επιτυχία προσθήκης)
         """
         logger.log_info(f"Excecuting creation of {customer}")
+
+        # Σημαντική προεπεξεργασία ώστε τα κενά strings να μετατρέπονται
+        # σε None. Αλλιώς θεωρεί ότι το "" είναι πληροφορία και δεν δέχεται
+        # δεύτερο πελάτη με κενό τηλέφωνο η email.
+        self.sanitize(customer)
 
         # Έλεγχος ύπαρξης πελάτη
         existing_customer = self.filter_by_all(customer)
@@ -191,6 +201,8 @@ class CustomerModel:
         Επιστρέφει boolean επιτυχούς ενημέρωσης
         """
         logger.log_info(f"Excecuting update of {new_customer}")
+
+        self.sanitize(new_customer)
 
         # Αναζητεί την παλιά εγγραφή του πελάτη
         old_customer = None
