@@ -3,18 +3,16 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
-from datetime import datetime, timedelta
-from typing import Literal
 
 from .sidepanel import SidePanel
-from .abstract_views import EntryWithPlaceholder, SideView
+from .abstract_views import SideView
 
-from ..model.types import Appointment, Customer
+from ..model.types import Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
-
+from .entries import CustomerEntry
 
 cc = CustomerControl()
 ac = AppointmentControl()
@@ -28,42 +26,24 @@ class AddCustomerView(SideView):
         super().__init__(master, *args, **kwargs)
         self.name = "addc"
         self.main_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
-
-        self.set_title("Προσθήκη νέου πελάτη")
         self.main_frame.pack(fill="both", expand=True)
 
-        self.cus_entry_name = EntryWithPlaceholder(self.main_frame, placeholder="name")
-        self.cus_entry_name.pack(fill="x")
-        self.cus_entry_surname = EntryWithPlaceholder(
-            self.main_frame, placeholder="surname"
-        )
-        self.cus_entry_surname.pack(fill="x")
-        self.cus_entry_phone = EntryWithPlaceholder(
-            self.main_frame, placeholder="phone number"
-        )
-        self.cus_entry_phone.pack(fill="x")
-        self.cus_entry_email = EntryWithPlaceholder(
-            self.main_frame, placeholder="email address"
-        )
-        self.cus_entry_email.pack(fill="x")
-        self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
+        self.set_title("Προσθήκη νέου πελάτη")
+        self.customer_entry = CustomerEntry(self.main_frame)
+        self.customer_entry.pack(fill="x")
+        self.save_button = ttk.Button(self.main_frame, text="Add", command=self.save)
         self.save_button.pack()
 
     def update_content(self, caller, caller_data):
-        for entry in self.main_frame.winfo_children():
-            if isinstance(entry, EntryWithPlaceholder):
-                entry.delete(0, tk.END)
-                entry.put_placeholder()
+        self.customer_entry.populate(None)
 
     def save(self):
-        cc.create_customer(
-            Customer(
-                name=self.cus_entry_name.get_without_placeholder(),
-                surname=self.cus_entry_surname.get_without_placeholder(),
-                phone=self.cus_entry_phone.get_without_placeholder(),
-                email=self.cus_entry_email.get_without_placeholder(),
-            )
-        )
+        new_customer = self.customer_entry.get()
+        success = cc.create_customer(new_customer)
+        if not success:
+            showerror(message="Failed to add new customer")
+        else:
+            self.sidepanel.go_back()
 
 
 class EditCustomerView(SideView):
@@ -76,22 +56,14 @@ class EditCustomerView(SideView):
 
         self.set_title("Επεξεργασία νέου πελάτη")
         self.main_frame.pack(fill="both", expand=True)
-        self.back_btn.config
 
-        self.cus_entry_name = ttk.Entry(self.main_frame)
-        self.cus_entry_name.pack(fill="x")
-        self.cus_entry_surname = ttk.Entry(self.main_frame)
-        self.cus_entry_surname.pack(fill="x")
-        self.cus_entry_phone = ttk.Entry(self.main_frame)
-        self.cus_entry_phone.pack(fill="x")
-        self.cus_entry_email = ttk.Entry(self.main_frame)
-        self.cus_entry_email.pack(fill="x")
+        self.customer_entry = CustomerEntry(self.main_frame)
+        self.customer_entry.pack(fill="x")
+
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
         self.save_button.pack()
 
     def update_content(self, caller, caller_data):
-        self.reset()
-
         if not isinstance(caller_data, list):
             logger.log_warn("Failed to communicate customer data")
             return
@@ -100,29 +72,12 @@ class EditCustomerView(SideView):
             logger.log_warn("Failed to communicate customer data")
             return
 
-        self.cus_id = int(caller_data[0])
-        if caller_data[1] is not None:
-            self.cus_entry_name.insert(0, caller_data[1])
-        if caller_data[2] is not None:
-            self.cus_entry_surname.insert(0, caller_data[2])
-        if caller_data[3] is not None:
-            self.cus_entry_phone.insert(0, caller_data[3])
-        if caller_data[4] is not None:
-            self.cus_entry_email.insert(0, caller_data[4])
+        self.customer_entry.populate(caller_data)
 
     def save(self):
-        cc.update_customer(
-            Customer(
-                id=self.cus_id,
-                name=self.cus_entry_name.get() or None,
-                surname=self.cus_entry_surname.get() or None,
-                phone=self.cus_entry_phone.get() or None,
-                email=self.cus_entry_email.get() or None,
-            )
-        )
-
-    def reset(self):
-        self.cus_entry_name.delete(0, tk.END)
-        self.cus_entry_surname.delete(0, tk.END)
-        self.cus_entry_phone.delete(0, tk.END)
-        self.cus_entry_email.delete(0, tk.END)
+        new_customer = self.customer_entry.get()
+        success = cc.update_customer(new_customer)
+        if not success:
+            showerror(message="Failed to update customer")
+        else:
+            self.sidepanel.go_back()

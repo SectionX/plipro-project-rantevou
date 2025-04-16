@@ -89,7 +89,7 @@ class AlertRow(ttk.Frame):
         hours, mins = mins // 60, mins % 60
         time = f"{int(hours):02d}:{int(mins):02d}"
 
-        if self.customer:
+        if self.customer and self.customer.name:
             name = self.customer.name
         else:
             name = "     ---     "

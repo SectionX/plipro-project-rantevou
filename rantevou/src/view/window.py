@@ -81,6 +81,7 @@ class Window(tk.Tk):
         self.side_panel.register_view(SearchResultsView(self.side_panel), "search")
         self.side_panel.register_view(AddCustomerView(self.side_panel), "addc")
         self.side_panel.register_view(EditCustomerView(self.side_panel), "editc")
+        # TODO εδώ προσθέτουμε το καινούριο CustomerView, προτινεται το όνομα "customer"
         self.side_panel.select_view("alerts")
 
         self.grid_rowconfigure(0, weight=4)

@@ -12,6 +12,7 @@ from ..controller.customers_controller import CustomerControl
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 
+
 cc = CustomerControl()
 ac = AppointmentControl()
 logger = Logger("customers-view")
