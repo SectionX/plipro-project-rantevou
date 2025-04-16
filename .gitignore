@@ -10,3 +10,5 @@ pyinit.egg-info
 .pytest_cache
 .tox
 .test_commit.sh
+/rantevou/data/log.txt
+/rantevou/data/log.zip
