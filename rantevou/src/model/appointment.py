@@ -10,8 +10,8 @@
 
 from __future__ import annotations
 from datetime import datetime, timedelta
-from typing import Any
-from collections import defaultdict, deque
+from typing import Any, Generator
+from collections import defaultdict
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
@@ -134,38 +134,28 @@ class AppointmentModel:
     _instance = None
     session = session
     # appointments: list[Appointment] = []
-    appointments: dict[int, list[Appointment]] = {}
+    appointments: defaultdict[int, list[Appointment]] = defaultdict(list)
     subscribers: list[Subscriber] = []
     max_id = 0
 
     def __new__(cls, *args, **kwargs) -> AppointmentModel:
         if cls._instance is None:
             cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
+
             appointments = session.query(Appointment).all()
 
+            cls.max_id = 0
             cls.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+
             while appointments:
                 appointment = appointments.pop()
+                if appointment.id > cls.max_id:
+                    cls.max_id = appointment.id
                 index = (appointment.date - cls.now) // PERIOD
                 cls.appointments.setdefault(index, [])
                 cls.appointments[index].append(appointment)
 
-            cls.subscribers = []
-            if len(appointments) > 0:
-                cls.max_id = max(appointments, key=lambda x: x.id).id
-            else:
-                cls.max_id = 0
-
         return cls._instance
-
-    # def sort(self, list_=None) -> list[Appointment]:
-    #     """
-    #     Sort με βάση τον χρόνο επειδή είναι η πιο χρήσιμη
-    #     πληροφορία αυτής της οντότητας.
-    #     """
-    #     logger.log_info("Excecuting sorting of cached appointments")
-    #     self.appointments.sort(key=lambda x: x.date)
-    #     return self.appointments
 
     def add_appointment(
         self, appointment: Appointment, update: bool = True
@@ -294,17 +284,21 @@ class AppointmentModel:
             return False
 
         # Ενημέρωση του cache
-        self.appointments.remove(appointment_to_delete)
-        if len(self.appointments) == 0:
-            self.max_id = 0
+        self.delete_from_cache(appointment_to_delete)
+
+        highest_id_appointment = (
+            self.session.query(Appointment).order_by(Appointment.id.desc()).first()
+        )
+        if highest_id_appointment is not None:
+            self.max_id = highest_id_appointment.id
         else:
-            self.max_id = max(self.appointments, key=lambda x: x.id).id
+            self.max_id = 0
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
         return True
 
-    def get_appointments(self) -> list[Appointment]:
+    def get_appointments(self) -> dict[int, list[Appointment]]:
         """
         Διπλή λειτουργία ανάκτησης στοιχείων απο την βάση δεδομένων και
         διάθεσης του cache στις σχετικές μονάδες.
@@ -328,64 +322,18 @@ class AppointmentModel:
 
     def get_appointments_from_to_date(
         self, from_date: datetime, to_date: datetime
-    ) -> list[Appointment]:
+    ) -> Generator[Appointment]:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
-        logger.log_debug(f"Excecuting query from {from_date} to {to_date}")
-        return (
-            self.session.query(Appointment)
-            .filter(Appointment.date >= from_date, Appointment.date < to_date)
-            .all()
-        )
+        index1 = self.get_index(from_date)
+        index2 = self.get_index(to_date)
+        for i in range(index1, index2 + 1):
+            for appointment in self.appointments[i]:
+                yield appointment
 
     def split_appointments_in_periods(self, *args, **kwargs):
         return self.appointments
-
-    #     self,
-    #     period: timedelta,
-    #     start: datetime | None = None,
-    # ) -> dict[int, list[Appointment]]:
-    #     """
-    #     Συνάρτηση συνήθους περίπτωσης. Χωρίζει τα ραντεβού σε περιόδους για
-    #     καλύτερη εμφάνιση στον χρήστη ή για παραγωγή στατιστικών στοιχείων
-    #     """
-
-    #     # Εάν δεν δοθεί αρχική ημερομηνία, τότε υποθέτει πως η αρχή είναι
-    #     # το πρώτο ραντεβού κατα ημερομηνία
-    #     if start is None:
-    #         start = self.appointments[0].date
-
-    #     logger.log_debug(
-    #         f"Excecuting query of split appointments by {period=} with start date={start}"
-    #     )
-
-    #     # Προτιμήθηκε dictionary ώστε να υπάρχει αρνητικό index. Οι λίστες τις python
-    #     # θεωρούν οτι το -1 είναι το τελευταίο στοιχείο. Θέλουμε το -1 να είναι το
-    #     # στοιχείο αμέσως πριν το start date. Μπορεί να υλοποιηθεί και με λίστα αλλά
-    #     # είναι αχρείαστα πολύπλοκο
-    #     dict_: dict[int, list[Appointment]] = defaultdict(list)
-    #     for appointment in self.appointments:
-    #         index = (appointment.date - start) // period
-    #         dict_[index].append(appointment)
-
-    #     return dict_
-
-    # def get_appointment_period_index(
-    #     self,
-    #     appointment: Appointment,
-    #     period: timedelta,
-    #     start: datetime | None = None,
-    # ) -> int:
-    #     """
-    #     Υπολογίζει το index της περιόδου με βάση την ημερομηνία. Βοηθητική της
-    #     "split_appointments_in_periods"
-    #     """
-    #     logger.log_debug(f"Excecuting calculation of group period index")
-    #     if start is None:
-    #         start = self.appointments[0].date
-
-    #     return (appointment.date - start) // period
 
     def get_time_between_appointments(
         self,
@@ -491,12 +439,13 @@ class AppointmentModel:
         # index = self.binary_search(target.date)
         # self.appointments.insert(index, target)
 
-    def delete_from_cache(self, target):
+    def delete_from_cache(self, target: Appointment):
         """
         Συνάρτηση ενημέρωσης του cache
         """
         logger.log_info(f"Excecuting cache deletion")
-        self.appointments.remove(target)
+        index = self.get_index(target.date)
+        self.appointments[index].remove(target)
 
     def add_subscriber(self, subscriber: Subscriber):
         """

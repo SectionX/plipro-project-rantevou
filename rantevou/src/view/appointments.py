@@ -258,6 +258,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def appointments(self):
+        AppointmentsTab.appointment_groups[self.group_index].sort(key=lambda x: x.date)
         return AppointmentsTab.appointment_groups[self.group_index]
 
     @property
@@ -270,10 +271,16 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def previous_period_appointments(self):
+        AppointmentsTab.appointment_groups[self.group_index - 1].sort(
+            key=lambda x: x.date
+        )
         return AppointmentsTab.appointment_groups[self.group_index - 1]
 
     @property
     def next_period_appointments(self):
+        AppointmentsTab.appointment_groups[self.group_index + 1].sort(
+            key=lambda x: x.date
+        )
         return AppointmentsTab.appointment_groups[self.group_index + 1]
 
     def subscriber_update(self):

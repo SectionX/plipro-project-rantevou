@@ -113,7 +113,6 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.delete(*self.get_children())
         for customer in CustomersTab.customers:
             values = customer.values
-            values[-1] = len(values[-1])
             values = [value or "" for value in values]
             self.insert("", "end", values=values)
 

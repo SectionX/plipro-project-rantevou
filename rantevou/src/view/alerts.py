@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, Iterable
 
 from .sidepanel import SideView, SidePanel
 
@@ -116,7 +116,7 @@ class AlertRow(ttk.Frame):
 class AlertsView(SideView, SubscriberInterface):
     name: str = "alert"
     rows: list[AlertRow]
-    appointments: list[Appointment]
+    appointments: Iterable[Appointment]
 
     def __init__(self, root: SidePanel, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
@@ -131,25 +131,19 @@ class AlertsView(SideView, SubscriberInterface):
         self.appointments = ac.get_appointments_from_to_date(
             start=datetime.now(), end=datetime.now() + timedelta(days=1)
         )
-        alerts_count = len(self.appointments)
-        rows_count = len(self.rows)
 
-        if alerts_count > rows_count:
-            for _ in range(alerts_count - rows_count):
+        rows_count = len(self.rows)
+        i = 0
+        for i, appointment in enumerate(self.appointments):
+            if i < rows_count:
+                self.rows[i].set_appointment(appointment)
+            else:
                 self.rows.append(AlertRow(self))
+                self.rows[i].set_appointment(appointment)
+                self.rows[i].pack(fill="x", pady=1, padx=1)
 
-        if rows_count > alerts_count:
-            for _ in range(rows_count - alerts_count):
-                row = self.rows.pop()
-                row.destroy()
-
-        alerts_count = len(self.appointments)
-        rows_count = len(self.rows)
-        assert alerts_count == rows_count
-
-        for row, appointment in zip(self.rows, self.appointments):
-            row.set_appointment(appointment)
-            row.pack(fill="x", pady=1, padx=1)
+        while len(self.rows) > i + 1:
+            self.rows.pop().destroy()
 
     def pop_row(self, row: AlertRow):
         row.forget()

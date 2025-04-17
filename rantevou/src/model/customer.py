@@ -38,7 +38,6 @@ class Customer(Base):
             self.surname,
             self.phone,
             self.email,
-            self.appointments,
         ]
 
     @classmethod
