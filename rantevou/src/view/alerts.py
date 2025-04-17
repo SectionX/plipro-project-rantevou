@@ -51,7 +51,7 @@ class AlertRow(ttk.Frame):
             self.after_cancel(self.cancel_id)
 
         if appointment is None:
-            self.forget()
+            self.after(0, self.forget)
             self._state = "inactive"
             return
 
@@ -62,16 +62,16 @@ class AlertRow(ttk.Frame):
 
     def update_content(self):
         if self.appointment is None:
-            self.root.pop_row(self)
+            self.after(0, self.forget)
             self._state = "inactive"
             return
 
         original_date = self.appointment.date
-        extended_date = original_date + timedelta(minutes=10)
+        extended_date = self.appointment.end_date
         now = datetime.now()
 
         if extended_date < now:
-            self.root.pop_row(self)
+            self.after(0, self.forget)
             self._state = "inactive"
             return
 
@@ -128,8 +128,10 @@ class AlertsView(SideView, SubscriberInterface):
         self.back_btn.destroy()
 
     def update_content(self, *args, **kwargs):
-        self.appointments = ac.get_appointments_from_to_date(
-            start=datetime.now(), end=datetime.now() + timedelta(days=1)
+        self.appointments = list(
+            ac.get_appointments_from_to_date(
+                start=datetime.now(), end=datetime.now() + timedelta(days=1)
+            )
         )
 
         rows_count = len(self.rows)
@@ -142,11 +144,8 @@ class AlertsView(SideView, SubscriberInterface):
                 self.rows[i].set_appointment(appointment)
                 self.rows[i].pack(fill="x", pady=1, padx=1)
 
-        while len(self.rows) > i + 1:
+        while len(self.rows) > len(self.appointments):
             self.rows.pop().destroy()
-
-    def pop_row(self, row: AlertRow):
-        row.forget()
 
     def subscriber_update(self):
         self.update_content()

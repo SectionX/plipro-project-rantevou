@@ -42,7 +42,7 @@ class AppointmentControl:
     def __init__(self):
         self.model = AppointmentModel()
 
-    def get_appointments(self) -> list[Appointment]:
+    def get_appointments(self) -> dict[int, list[Appointment]]:
         """
         Επιστρέφει όλες τις εγγραφές από το table Appointments
         """
@@ -143,9 +143,9 @@ class AppointmentControl:
 
     def get_time_between_appointments(
         self,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        minumum_free_period: timedelta | None = None,
+        start_date: datetime = datetime.now(),
+        end_date: datetime = datetime.now() + timedelta(days=1),
+        minumum_free_period: timedelta = timedelta(minutes=120),  # TODO import settings
     ) -> list[tuple[datetime, timedelta]]:
         logger.log_debug(
             f"Requesting list of time between appointments for {start_date=}, {minumum_free_period=}"

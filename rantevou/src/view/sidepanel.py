@@ -240,17 +240,17 @@ class SearchBar(ttk.Frame):
         self.button.pack(side=tk.BOTTOM, fill="x")
 
     def search(self):
-        user_input: int | str = self.entry.get()
+        user_input: timedelta | str = self.entry.get()
 
         if isinstance(user_input, str):
             if user_input.isdigit():
-                user_input = int(user_input)
+                user_input = timedelta(minutes=int(user_input))
             else:
-                user_input = 0
+                user_input = timedelta(0)
 
-        self.duration = timedelta(minutes=user_input)
+        self.duration = user_input
         self.search_results = ac.get_time_between_appointments(
-            start_date=datetime.now(), minumum_free_period=self.duration
+            minumum_free_period=self.duration
         )
         self.sidepanel.select_view(
             "search", caller=self, caller_data=(self.search_results, self.duration)

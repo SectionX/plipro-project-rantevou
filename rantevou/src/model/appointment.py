@@ -14,7 +14,7 @@ from typing import Any, Generator
 from collections import defaultdict
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 
 from .session import Base, session
 from . import customer
@@ -50,8 +50,8 @@ class Appointment(Base):
 
     __tablename__ = "appointment"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    date: Mapped[datetime] = mapped_column(nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    date: Mapped[datetime] = mapped_column(nullable=False, unique=True, index=True)
     is_alerted: Mapped[bool] = mapped_column(default=False)
     duration: Mapped[timedelta] = mapped_column(default=timedelta(minutes=20))
     customer_id: Mapped[int | None] = mapped_column(
@@ -142,15 +142,25 @@ class AppointmentModel:
         if cls._instance is None:
             cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
 
-            appointments = session.query(Appointment).all()
+            cls.max_id = session.query(func.max(Appointment.id)).scalar()
+            if cls.max_id is None:
+                cls.max_id = 0
 
-            cls.max_id = 0
             cls.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+            cls.min_date = cls.now - timedelta(days=10)
+            cls.max_date = cls.now + timedelta(days=10)
+
+            appointments = (
+                session.query(Appointment)
+                .filter(
+                    Appointment.date >= cls.min_date, Appointment.date <= cls.max_date
+                )
+                .order_by(Appointment.date)
+                .all()
+            )
 
             while appointments:
                 appointment = appointments.pop()
-                if appointment.id > cls.max_id:
-                    cls.max_id = appointment.id
                 index = (appointment.date - cls.now) // PERIOD
                 cls.appointments.setdefault(index, [])
                 cls.appointments[index].append(appointment)
@@ -228,17 +238,19 @@ class AppointmentModel:
         old_appointment = (
             session.query(Appointment).filter_by(id=appointment.id).first()
         )
+
         if old_appointment is None:
             logger.log_warn("Appointment was not found in database")
             return False
 
         if isinstance(customer_id, int):
-            old_appointment.customer_id = appointment.customer_id
+            logger.log_info(f"Adding {customer_id=} to {appointment.id=}")
+            old_appointment.customer_id = customer_id
 
         old_appointment.date = appointment.date
         old_appointment.duration = appointment.duration
         old_appointment.is_alerted = appointment.is_alerted
-
+        logger.log_debug(f"{old_appointment=}")
         # Ενημέρωση του στοιχείου
         try:
             self.session.commit()
@@ -247,16 +259,8 @@ class AppointmentModel:
             self.session.rollback()
             return False
 
-        # Ενημέρ
-
-        # Έλεγχος ορθότητας. Θα αφαιρεθεί μετά απο εξωνυχιστικό testing
-        updated_appointment = self.get_appointment_by_id(old_appointment.id)
-        if updated_appointment is None:
-            logger.log_error("Failed to retrieve appointment after insertion")
-            raise Exception(f"DB failure on updating {appointment}")
-
         # Ενημέρωση του cache
-        self.replace_in_cache(old_appointment)
+        self.replace_in_cache(old_appointment, appointment.date)
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
@@ -285,14 +289,7 @@ class AppointmentModel:
 
         # Ενημέρωση του cache
         self.delete_from_cache(appointment_to_delete)
-
-        highest_id_appointment = (
-            self.session.query(Appointment).order_by(Appointment.id.desc()).first()
-        )
-        if highest_id_appointment is not None:
-            self.max_id = highest_id_appointment.id
-        else:
-            self.max_id = 0
+        self.max_id = self.find_max_id()
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
@@ -337,9 +334,9 @@ class AppointmentModel:
 
     def get_time_between_appointments(
         self,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        minumum_free_period: timedelta | None = None,
+        start_date: datetime = datetime.now(),
+        end_date: datetime = datetime.now() + timedelta(days=1),
+        minumum_free_period: timedelta = PERIOD,
     ) -> list[tuple[datetime, timedelta]]:
         """
         Συνάρτηση αναζήτησης κενού χρόνου μεταξύ των ραντεβού. Σκοπός είναι
@@ -354,25 +351,18 @@ class AppointmentModel:
 
         # Για λόγους στατιστικών στοιχείων, εάν δεν δωθεί αρχική ημερομηνία,
         # υπολογίζει από την αρχή
-        if len(self.appointments) == 0:
-            return [(datetime.now(), timedelta(minutes=20))]
 
-        if start_date is None:
-            start_date = self.appointments[0].date
+        start_index = self.get_index(start_date)
+        end_index = self.get_index(end_date)
 
-        if end_date is None:
-            end_date = self.appointments[-1].date
+        appointments: list[Appointment] = []
+        for i in range(start_index, end_index + 1):
+            appointments.extend(self.appointments[i])
 
-        # Εάν δεν υπάρχει ελάχιστη χρονική ανάγκη, την μετατρέπει σε μηδενικό
-        # χρόνο για την ορθή λειτουργία του προγράμματος
-        if minumum_free_period is None:
-            minumum_free_period = timedelta(0)
-
-        # Υπολογίζει τον χρόνο έχοντας υπόψην και την διάρκεια των υπαρχόντων
-        # ραντεβού
         result: list[tuple[datetime, timedelta]] = []
 
-        for i, appointment in enumerate(self.appointments):
+        i = 0
+        for i, appointment in enumerate(appointments):
 
             # Αγνοεί τα ραντεβού πριν και μετά την ημερομηνία που θέλει ο χρηστης
             if appointment.end_date < start_date:
@@ -382,45 +372,38 @@ class AppointmentModel:
                 break
 
             # Για να μην βγεί εκτός ορίων εφόσον κοιτάμε ένα ραντεβού μπροστά
-            if i == len(self.appointments) - 1:
+            if i == len(appointments) - 1:
                 break
 
             previous = appointment
-            next = self.appointments[i + 1]
+            next = appointments[i + 1]
             diff = previous.time_between_appointments(next)
             if diff >= minumum_free_period:
                 result.append((previous.end_date, diff))
 
+        if i == 0:
+            return [(datetime.now(), timedelta(minutes=20))]
+
         return result
 
-    def replace_in_cache(self, new_appointment: Appointment) -> None:
+    def replace_in_cache(
+        self, new_appointment: Appointment, old_date: datetime | None = None
+    ) -> None:
         """
         Συνάρτηση ενημέρωσης του cache.
         """
         logger.log_info(f"Excecuting cache replacement")
+        if old_date is None:
+            index = self.get_index(new_appointment.date)
+        else:
+            index = self.get_index(old_date)
 
-        for i, appointment in enumerate(self.appointments):
-            if appointment.id == new_appointment.id:
-                self.appointments[i] = new_appointment
-                self.appointments.sort(key=lambda x: x.date)
+        for i in range(len(self.appointments[index])):
+            if self.appointments[index][i].id == new_appointment.id:
+                self.appointments[index][i] = new_appointment
                 return
 
-    def binary_search(self, date: datetime, start=0, end=-1) -> int:
-        if end == -1:
-            end = len(self.appointments)
-
-        if start == end:
-            return start
-
-        index = (end - start) // 2 + start
-        print(index)
-        if date < self.appointments[index].date:
-            return self.binary_search(date, start, index)
-        if date > self.appointments[index].date:
-            return self.binary_search(date, index + 1, end)
-        return index
-
-    def get_index(self, date):
+    def get_index(self, date: datetime):
         return (date - self.now) // PERIOD
 
     def add_to_cache(self, target: Appointment):
@@ -431,13 +414,7 @@ class AppointmentModel:
 
         index = self.get_index(target.date)
         self.appointments[index].append(target)
-
-        # if len(self.appointments) == 0:
-        #     self.appointments.append(target)
-        #     return
-
-        # index = self.binary_search(target.date)
-        # self.appointments.insert(index, target)
+        self.appointments[index].sort(key=lambda x: x.date)
 
     def delete_from_cache(self, target: Appointment):
         """
@@ -469,3 +446,32 @@ class AppointmentModel:
         for subscriber in self.subscribers:
             logger.log_debug(str(subscriber))
             subscriber.subscriber_update()
+
+    def find_max_id(self) -> int:
+        result = self.session.query(func.max(Appointment.id)).scalar()
+        if result is None:
+            return 0
+        return result
+
+    def load_to_cache(self, date: datetime):
+        if date > self.max_date:
+            start = self.max_date
+            end = date
+            self.max_date = date
+        elif date < self.min_date:
+            start = date
+            end = self.min_date
+            self.min_date = date
+        else:
+            return
+
+        appointments = (
+            self.session.query(Appointment)
+            .filter(Appointment.date >= start, Appointment.date < end)
+            .order_by(Appointment.date)
+            .all()
+        )
+        for appointment in appointments:
+            index = self.get_index(appointment.date)
+            self.appointments.setdefault(index, [])
+            self.appointments[index].append(appointment)

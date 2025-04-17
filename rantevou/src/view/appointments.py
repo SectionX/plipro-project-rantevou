@@ -60,7 +60,6 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
 
     group_period = cfg["group_period"]
 
-    appointments = ac.get_appointments()
     appointment_groups = ac.get_appointments_grouped_in_periods(
         start=start_date, period=timedelta(minutes=120)
     )
@@ -72,7 +71,6 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
         self.main_panel.pack(fill="both", expand=True)
 
     def subscriber_update(self):
-        AppointmentsTab.appointments = ac.get_appointments()
         AppointmentsTab.appointment_groups = ac.get_appointments_grouped_in_periods(
             AppointmentsTab.start_date, AppointmentsTab.group_period
         )
