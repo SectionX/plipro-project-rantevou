@@ -12,7 +12,7 @@ if len(argv) > 1:
         raise Exception("Unknown argument")
     exit(0)
 
-Logger.level = 1
+Logger.level = 0
 
 
 def main():

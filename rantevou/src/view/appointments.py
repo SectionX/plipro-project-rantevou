@@ -282,8 +282,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     def draw(self):
         appointment_count = len(self.appointments)
-        times_between = self.times_between_appointments
-        times_between.sort(key=lambda x: x[1])
 
         if appointment_count <= 1:
             self.style = "low.TLabel"

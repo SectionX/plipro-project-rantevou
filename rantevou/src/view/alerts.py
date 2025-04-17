@@ -129,7 +129,7 @@ class AlertsView(SideView, SubscriberInterface):
 
     def update_content(self, *args, **kwargs):
         self.appointments = ac.get_appointments_from_to_date(
-            start=datetime.now(), end=datetime.now() + timedelta(days=7)
+            start=datetime.now(), end=datetime.now() + timedelta(days=1)
         )
         alerts_count = len(self.appointments)
         rows_count = len(self.rows)

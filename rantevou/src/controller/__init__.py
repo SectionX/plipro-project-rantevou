@@ -21,7 +21,10 @@ def get_config():
 
 from .logging import Logger
 
-Logger.archive_day()
+try:
+    Logger.archive_day()
+except:
+    pass
 
 
 class SubscriberInterface:

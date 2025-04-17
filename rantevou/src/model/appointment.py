@@ -23,6 +23,7 @@ from ..controller.logging import Logger
 from typing import Protocol
 
 logger = Logger("appointment-model")
+PERIOD = timedelta(hours=2)
 
 
 class Subscriber(Protocol):
@@ -132,31 +133,39 @@ class AppointmentModel:
 
     _instance = None
     session = session
-    appointments: list[Appointment] = []
+    # appointments: list[Appointment] = []
+    appointments: dict[int, list[Appointment]] = {}
     subscribers: list[Subscriber] = []
     max_id = 0
 
     def __new__(cls, *args, **kwargs) -> AppointmentModel:
         if cls._instance is None:
             cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
-            cls.appointments = session.query(Appointment).all()
-            cls.appointments.sort(key=lambda x: x.date)
+            appointments = session.query(Appointment).all()
+
+            cls.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+            while appointments:
+                appointment = appointments.pop()
+                index = (appointment.date - cls.now) // PERIOD
+                cls.appointments.setdefault(index, [])
+                cls.appointments[index].append(appointment)
+
             cls.subscribers = []
-            if len(cls.appointments) > 0:
-                cls.max_id = max(cls.appointments, key=lambda x: x.id).id
+            if len(appointments) > 0:
+                cls.max_id = max(appointments, key=lambda x: x.id).id
             else:
                 cls.max_id = 0
 
         return cls._instance
 
-    def sort(self, list_=None) -> list[Appointment]:
-        """
-        Sort με βάση τον χρόνο επειδή είναι η πιο χρήσιμη
-        πληροφορία αυτής της οντότητας.
-        """
-        logger.log_info("Excecuting sorting of cached appointments")
-        self.appointments.sort(key=lambda x: x.date)
-        return self.appointments
+    # def sort(self, list_=None) -> list[Appointment]:
+    #     """
+    #     Sort με βάση τον χρόνο επειδή είναι η πιο χρήσιμη
+    #     πληροφορία αυτής της οντότητας.
+    #     """
+    #     logger.log_info("Excecuting sorting of cached appointments")
+    #     self.appointments.sort(key=lambda x: x.date)
+    #     return self.appointments
 
     def add_appointment(
         self, appointment: Appointment, update: bool = True
@@ -330,51 +339,53 @@ class AppointmentModel:
             .all()
         )
 
-    def split_appointments_in_periods(
-        self,
-        period: timedelta,
-        start: datetime | None = None,
-    ) -> dict[int, list[Appointment]]:
-        """
-        Συνάρτηση συνήθους περίπτωσης. Χωρίζει τα ραντεβού σε περιόδους για
-        καλύτερη εμφάνιση στον χρήστη ή για παραγωγή στατιστικών στοιχείων
-        """
+    def split_appointments_in_periods(self, *args, **kwargs):
+        return self.appointments
 
-        # Εάν δεν δοθεί αρχική ημερομηνία, τότε υποθέτει πως η αρχή είναι
-        # το πρώτο ραντεβού κατα ημερομηνία
-        if start is None:
-            start = self.appointments[0].date
+    #     self,
+    #     period: timedelta,
+    #     start: datetime | None = None,
+    # ) -> dict[int, list[Appointment]]:
+    #     """
+    #     Συνάρτηση συνήθους περίπτωσης. Χωρίζει τα ραντεβού σε περιόδους για
+    #     καλύτερη εμφάνιση στον χρήστη ή για παραγωγή στατιστικών στοιχείων
+    #     """
 
-        logger.log_debug(
-            f"Excecuting query of split appointments by {period=} with start date={start}"
-        )
+    #     # Εάν δεν δοθεί αρχική ημερομηνία, τότε υποθέτει πως η αρχή είναι
+    #     # το πρώτο ραντεβού κατα ημερομηνία
+    #     if start is None:
+    #         start = self.appointments[0].date
 
-        # Προτιμήθηκε dictionary ώστε να υπάρχει αρνητικό index. Οι λίστες τις python
-        # θεωρούν οτι το -1 είναι το τελευταίο στοιχείο. Θέλουμε το -1 να είναι το
-        # στοιχείο αμέσως πριν το start date. Μπορεί να υλοποιηθεί και με λίστα αλλά
-        # είναι αχρείαστα πολύπλοκο
-        dict_: dict[int, list[Appointment]] = defaultdict(list)
-        for appointment in self.appointments:
-            index = (appointment.date - start) // period
-            dict_[index].append(appointment)
+    #     logger.log_debug(
+    #         f"Excecuting query of split appointments by {period=} with start date={start}"
+    #     )
 
-        return dict_
+    #     # Προτιμήθηκε dictionary ώστε να υπάρχει αρνητικό index. Οι λίστες τις python
+    #     # θεωρούν οτι το -1 είναι το τελευταίο στοιχείο. Θέλουμε το -1 να είναι το
+    #     # στοιχείο αμέσως πριν το start date. Μπορεί να υλοποιηθεί και με λίστα αλλά
+    #     # είναι αχρείαστα πολύπλοκο
+    #     dict_: dict[int, list[Appointment]] = defaultdict(list)
+    #     for appointment in self.appointments:
+    #         index = (appointment.date - start) // period
+    #         dict_[index].append(appointment)
 
-    def get_appointment_period_index(
-        self,
-        appointment: Appointment,
-        period: timedelta,
-        start: datetime | None = None,
-    ) -> int:
-        """
-        Υπολογίζει το index της περιόδου με βάση την ημερομηνία. Βοηθητική της
-        "split_appointments_in_periods"
-        """
-        logger.log_debug(f"Excecuting calculation of group period index")
-        if start is None:
-            start = self.appointments[0].date
+    #     return dict_
 
-        return (appointment.date - start) // period
+    # def get_appointment_period_index(
+    #     self,
+    #     appointment: Appointment,
+    #     period: timedelta,
+    #     start: datetime | None = None,
+    # ) -> int:
+    #     """
+    #     Υπολογίζει το index της περιόδου με βάση την ημερομηνία. Βοηθητική της
+    #     "split_appointments_in_periods"
+    #     """
+    #     logger.log_debug(f"Excecuting calculation of group period index")
+    #     if start is None:
+    #         start = self.appointments[0].date
+
+    #     return (appointment.date - start) // period
 
     def get_time_between_appointments(
         self,
@@ -443,25 +454,42 @@ class AppointmentModel:
         for i, appointment in enumerate(self.appointments):
             if appointment.id == new_appointment.id:
                 self.appointments[i] = new_appointment
+                self.appointments.sort(key=lambda x: x.date)
                 return
 
-    def add_to_cache(self, target):
+    def binary_search(self, date: datetime, start=0, end=-1) -> int:
+        if end == -1:
+            end = len(self.appointments)
+
+        if start == end:
+            return start
+
+        index = (end - start) // 2 + start
+        print(index)
+        if date < self.appointments[index].date:
+            return self.binary_search(date, start, index)
+        if date > self.appointments[index].date:
+            return self.binary_search(date, index + 1, end)
+        return index
+
+    def get_index(self, date):
+        return (date - self.now) // PERIOD
+
+    def add_to_cache(self, target: Appointment):
         """
         Συνάρτηση ενημέρωσης του cache
         """
         logger.log_info(f"Excecuting cache addition")
 
-        if len(self.appointments) == 0:
-            self.appointments.append(target)
-            return
+        index = self.get_index(target.date)
+        self.appointments[index].append(target)
 
-        # Μικρό optimization εφόσον οι νέες προσθήκες γίνονται σε νεότερες
-        # ημερομηνίες και το cache είναι sorted κατα ημερομηνία
-        for i in range(len(self.appointments) - 1, -1, -1):
-            if self.appointments[i].date > target.date:
-                continue
-            self.appointments.insert(i + 1, target)
-            break
+        # if len(self.appointments) == 0:
+        #     self.appointments.append(target)
+        #     return
+
+        # index = self.binary_search(target.date)
+        # self.appointments.insert(index, target)
 
     def delete_from_cache(self, target):
         """
@@ -490,4 +518,5 @@ class AppointmentModel:
             f"Excecuting notification of {len(self.subscribers)} subscribers"
         )
         for subscriber in self.subscribers:
+            logger.log_debug(str(subscriber))
             subscriber.subscriber_update()

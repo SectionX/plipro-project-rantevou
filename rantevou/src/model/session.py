@@ -39,8 +39,8 @@ def generate_fake_appointment_data():
     from .appointment import Appointment
 
     start_date = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-    for i in range(300):
-        start_date = start_date + timedelta(minutes=5 * randint(4, 20))
+    for i in range(30000):
+        start_date = start_date + timedelta(minutes=5 * randint(4, 6))
         if start_date.hour > 17:
             start_date = start_date.replace(
                 day=start_date.day, hour=9, minute=0
