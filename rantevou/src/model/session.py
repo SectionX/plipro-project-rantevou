@@ -19,18 +19,27 @@ class Base(DeclarativeBase):
 
 
 def generate_fake_customer_data():
+    from itertools import combinations
     from faker import Faker
     from .customer import Customer
 
+    combs_email = combinations("abcdefghijklmnopqrstuvwxyz123457890", 10)
+    combs_phone = combinations("1234567890", 7)
+    start = 210
     fk = Faker("el-GR")
 
-    for i in range(300):
-        yield Customer(
-            name=fk.first_name(),
-            surname=fk.last_name(),
-            email=fk.email(),
-            phone=fk.phone_number(),
-        )
+    for i in range(30000):
+        try:
+            yield Customer(
+                name=fk.first_name(),
+                surname=fk.last_name(),
+                email=f"{''.join(next(combs_email))}@example.com",
+                phone=f"{start}{''.join(next(combs_phone))}",
+            )
+        except StopIteration:
+            start += 1
+            combs_phone = combinations("1234567890", 7)
+        print(i, end="\r")
 
 
 def generate_fake_appointment_data():
@@ -39,7 +48,7 @@ def generate_fake_appointment_data():
     from .appointment import Appointment
 
     start_date = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-    for i in range(300000):
+    for i in range(30000):
         start_date = start_date + timedelta(minutes=5 * randint(4, 6))
         if start_date.hour > 17:
             start_date = start_date.replace(
@@ -58,6 +67,7 @@ def generate_fake_appointment_data():
             is_alerted=is_alerted,
             duration=timedelta(minutes=20),
         )
+        print(i, end="\r")
 
 
 def initialize_db() -> None:

@@ -1,35 +1,56 @@
-from rantevou.src.controller.logging import Logger
-from rantevou import __main__
+# from rantevou.src.controller.logging import Logger
+# from rantevou import __main__
 
-from sqlalchemy import func, select
-
-from rantevou.src.model.types import Appointment
-from rantevou.src.controller import AppointmentControl, CustomerControl, get_config
-from rantevou.src.view.appointments import AppointmentsTab
-from tkinter import Tk
-
-from datetime import datetime, timedelta
-
-
+# __main__.main()
 from time import perf_counter
+from rantevou.src.controller.customers_controller import CustomerControl, Customer
+from sqlalchemy import or_
 
-ac = AppointmentControl()
-model = ac.model
+import pandas as pd
 
+cc = CustomerControl()
+df = pd.read_sql("SELECT * FROM customer", cc.model.session.bind)
+
+customers = cc.get_customers()
+queries = [
+    "abcdegjmy4@ex",
+    "abcdegjmy4@exa",
+    "abcdegjmy4@exam",
+    "abcdegjmy4@examp",
+    "abcdegjmy4@exampl",
+    "abcdegjmy4@example",
+    "abcdegjmy4@example.c",
+    "abcdegjmy4@example.co",
+    "abcdegjmy4@example.com",
+]
 start = perf_counter()
 
-print(model.session.query(func.max(Appointment.id)).scalar())
+for query in queries:
 
+    df.apply(lambda x: print(x), axis=1)
 
-# print(
-#     len(
-#         list(
-#             ac.get_appointments_from_to_date(
-#                 datetime.now(), datetime.now() + timedelta(days=30)
-#             )
-#         )
-#     )
-# )
+    # r = (
+    #     cc.model.session.query(Customer)
+    #     .filter(
+    #         or_(
+    #             Customer.name.like(f"%{query}%"),
+    #             Customer.surname.like(f"%{query}%"),
+    #             Customer.email.like(f"%{query}%"),
+    #             Customer.phone.like(f"%{query}%"),
+    #         )
+    #     )
+    #     .all()
+    # )
+    # print(r)
 
+    # for customer in customers:
+    #     if (
+    #         customer.name.startswith(query)
+    #         or customer.surname.startswith(query)
+    #         or customer.email.startswith(query)
+    #         or customer.phone.startswith(query)
+    #     ):
+    #         print(customer)
+    #         break
 
 print(perf_counter() - start)

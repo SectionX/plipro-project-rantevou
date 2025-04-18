@@ -127,15 +127,15 @@ class AppointmentControl:
         logger.log_info(f"Requesting appointment by {date=}")
         return self.model.get_appointment_by_date(date)
 
-    def get_appointments_grouped_in_periods(
-        self,
-        start: datetime,
-        period: timedelta,
-    ):
-        logger.log_debug(
-            f"Requesting model to split appointments in groups for {start=}, {period=}"
-        )
-        return self.model.split_appointments_in_periods(period, start)
+    # def get_appointments_grouped_in_periods(
+    #     self,
+    #     start: datetime,
+    #     period: timedelta,
+    # ):
+    #     logger.log_debug(
+    #         f"Requesting model to split appointments in groups for {start=}, {period=}"
+    #     )
+    #     return self.model.split_appointments_in_periods(period, start)
 
     def add_subscription(self, subscriber):
         logger.log_info(f"Requesting subscription for {subscriber}")
@@ -165,3 +165,6 @@ class AppointmentControl:
     def get_appointments_from_to_date(self, start: datetime, end: datetime):
         logger.log_debug(f"Requesting query of appointments from {start} to {end}")
         return self.model.get_appointments_from_to_date(start, end)
+
+    def get_appointments_by_period(self, date) -> list[Appointment]:
+        return self.model.get_appointments_by_period(date)

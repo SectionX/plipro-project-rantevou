@@ -11,7 +11,9 @@ from ..model.types import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
+from threading import Thread, Semaphore
 
+semaphore = Semaphore(1)
 
 cc = CustomerControl()
 ac = AppointmentControl()
@@ -32,6 +34,14 @@ class PopulateFromCustomer(Protocol):
     def populate_from_customer_tab(self, customer_data: Any | None): ...
 
 
+def check_values(values, keysequence):
+    for value in values:
+        value = normalize("NFKD", str(value)).lower().replace("́", "")
+        if value.startswith(keysequence):
+            return True
+    return False
+
+
 class SearchBar(ttk.Frame):
     searchbar: ttk.Entry
     customers: list[Customer]
@@ -46,8 +56,12 @@ class SearchBar(ttk.Frame):
         self.searchbar.bind("<Key>", self.search)
         self.searchbar.bind("<Visibility>", lambda x: self.searchbar.focus())
         self.searchbar.pack()
+        self.thread: Thread | None = None
 
     def search(self, event: tk.Event):
+        self.after(0, lambda: self._search(event))
+
+    def _search(self, event: tk.Event):
         symbol = event.keysym
         char = event.char
 
@@ -65,19 +79,31 @@ class SearchBar(ttk.Frame):
 
         keysequence = "".join(self.key_sequence).lower()
 
-        for item in self.sheet.get_children():
-            keep_line = False
+        children = self.sheet.get_children()
+        if len(children) == 0:
+            return
+
+        end_ptr = len(children) - 1
+
+        for i, item in enumerate(children):
+
             values = self.sheet.item(item)["values"]
+            if i == end_ptr:
+                if not check_values(values, keysequence):
+                    self.sheet.delete(item)
+                break
 
-            for value in values:
-                value = normalize("NFKD", str(value)).lower().replace("́", "")
+            if check_values(values, keysequence):
+                continue
 
-                if value.startswith(keysequence):
-                    keep_line = True
+            while end_ptr > i:
+                swap_values = self.sheet.item(children[end_ptr])["values"]
+                self.sheet.item(item, values=swap_values)
+                self.sheet.delete(children[end_ptr])
+                end_ptr -= 1
+
+                if check_values(swap_values, keysequence):
                     break
-
-            if not keep_line:
-                self.sheet.delete(item)
 
 
 class CustomerSheet(ttk.Treeview, SubscriberInterface):

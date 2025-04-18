@@ -1,0 +1,4 @@
+sqlite3 rantevou/data/rantevou.db 'select from customer where name like "a%" or surname like "a%" or email like "a%" or phone like "a%";'
+sqlite3 rantevou/data/rantevou.db 'select from customer where name like "ab%" or surname like "a%" or email like "a%" or phone like "ab%";'
+sqlite3 rantevou/data/rantevou.db 'select from customer where name like "abc%" or surname like "a%" or email like "a%" or phone like "abc%";'
+sqlite3 rantevou/data/rantevou.db 'select * from customer where name like "abcdegjmy4@example.com%" or surname like "abcdegjmy4@example.com%" or email like "abcdegjmy4@example.com%" or phone like "abcdegjmy4@example.com%";'

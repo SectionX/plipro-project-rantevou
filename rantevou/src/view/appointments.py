@@ -60,9 +60,9 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
 
     group_period = cfg["group_period"]
 
-    appointment_groups = ac.get_appointments_grouped_in_periods(
-        start=start_date, period=timedelta(minutes=120)
-    )
+    # appointment_groups = ac.get_appointments_grouped_in_periods(
+    #     start=start_date, period=timedelta(minutes=120)
+    # )
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
@@ -71,9 +71,7 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
         self.main_panel.pack(fill="both", expand=True)
 
     def subscriber_update(self):
-        AppointmentsTab.appointment_groups = ac.get_appointments_grouped_in_periods(
-            AppointmentsTab.start_date, AppointmentsTab.group_period
-        )
+        pass
 
 
 class GridNavBar(ttk.Frame):
@@ -256,8 +254,9 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def appointments(self):
-        AppointmentsTab.appointment_groups[self.group_index].sort(key=lambda x: x.date)
-        return AppointmentsTab.appointment_groups[self.group_index]
+        result = ac.get_appointments_by_period(self.period_start)
+        result.sort(key=lambda x: x.date)
+        return result
 
     @property
     def times_between_appointments(self) -> list[tuple[datetime, timedelta]]:
@@ -269,17 +268,19 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def previous_period_appointments(self):
-        AppointmentsTab.appointment_groups[self.group_index - 1].sort(
-            key=lambda x: x.date
+        appointments = ac.get_appointments_by_period(
+            self.period_start - timedelta(hours=2)
         )
-        return AppointmentsTab.appointment_groups[self.group_index - 1]
+        appointments.sort(key=lambda x: x.date)
+        return appointments
 
     @property
     def next_period_appointments(self):
-        AppointmentsTab.appointment_groups[self.group_index + 1].sort(
-            key=lambda x: x.date
+        appointments = ac.get_appointments_by_period(
+            self.period_end + timedelta(hours=2)
         )
-        return AppointmentsTab.appointment_groups[self.group_index + 1]
+        appointments.sort(key=lambda x: x.date)
+        return appointments
 
     def subscriber_update(self):
         self.draw()
@@ -323,9 +324,12 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.config(relief="flat")
 
     def show_focus(self):
-        self.config(relief="raised")
+        print(self.previous_period_appointments, end="\n----------\n")
+        print(self.appointments, end="\n----------\n")
+        print(self.next_period_appointments, end="\n----------\n")
         if GridCell.current_focus:
             GridCell.current_focus.unfocus()
+        self.config(relief="raised")
         GridCell.current_focus = self
 
     def show_in_sidepanel(self):
