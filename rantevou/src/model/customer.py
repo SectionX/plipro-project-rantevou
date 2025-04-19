@@ -42,8 +42,6 @@ class Customer(Base):
             self.surname,
             self.phone,
             self.email,
-            self.normalized_name,
-            self.normalized_surname,
         ]
 
     @classmethod
