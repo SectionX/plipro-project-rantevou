@@ -8,7 +8,6 @@ from ..controller.logging import Logger
 from ..controller.exceptions import *
 from .abstract_views import EntryWithPlaceholder
 
-ac = AppointmentControl()
 logger = Logger("entry")
 
 

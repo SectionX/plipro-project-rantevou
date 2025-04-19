@@ -12,7 +12,6 @@ from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
 
-ac = AppointmentControl()
 logger = Logger("appointment-manager")
 mailer = Mailer()
 

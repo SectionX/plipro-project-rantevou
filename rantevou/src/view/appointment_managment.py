@@ -14,7 +14,6 @@ from ..controller.logging import Logger
 from ..controller.mailer import Mailer
 from ..controller.exceptions import *
 
-ac = AppointmentControl()
 logger = Logger("appointment-manager")
 mailer = Mailer()
 
@@ -68,7 +67,7 @@ class EditAppointmentView(SideView):
 
     def delete(self):
         self.appointment = self.appointment_entry.get()
-        result = ac.delete_appointment(self.appointment)
+        result = AppointmentControl().delete_appointment(self.appointment)
         if result is True:
             self.sidepanel.go_back()
         else:
@@ -77,7 +76,9 @@ class EditAppointmentView(SideView):
     def save(self):
         self.appointment = self.appointment_entry.get()
         self.customer = self.customer_entry.get()
-        result = ac.update_appointment(self.appointment, self.customer)
+        result = AppointmentControl().update_appointment(
+            self.appointment, self.customer
+        )
         if result is True:
             self.sidepanel.go_back()
         else:
@@ -149,7 +150,7 @@ class AddAppointmentView(SideView):
         appointment = self.appointment_entry.get()
         customer = self.customer_entry.get()
 
-        ac.create_appointment(appointment, customer)
+        AppointmentControl().create_appointment(appointment, customer)
         self.sidepanel.go_back()
 
     def populate_from_customer_tab(self, customer_data):

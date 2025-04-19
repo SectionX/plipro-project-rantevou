@@ -14,25 +14,14 @@ from .sidepanel import SidePanel
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
-from ..controller import get_config
+from ..controller import get_config, SubscriberInterface
 
 from ..model.types import Appointment
 
 logger = Logger("AppointmentsTab")
-ac = AppointmentControl()
-cc = CustomerControl()
 cfg: dict[str, Any] = get_config()["view_settings"]
 cfg["group_period"] = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 cfgb = get_config()["buttons"]
-
-
-class SubscriberInterface:
-    def __init__(self):
-        ac.add_subscription(self)
-        cc.add_subscription(self)
-
-    def subscriber_update(self):
-        raise NotImplementedError
 
 
 class AppointmentsTab(AppFrame, SubscriberInterface):
@@ -60,7 +49,7 @@ class AppointmentsTab(AppFrame, SubscriberInterface):
 
     group_period = cfg["group_period"]
 
-    # appointment_groups = ac.get_appointments_grouped_in_periods(
+    # appointment_groups = AppointmentControl().get_appointments_grouped_in_periods(
     #     start=start_date, period=timedelta(minutes=120)
     # )
 
@@ -112,7 +101,7 @@ class Grid(ttk.Frame):
         for i in range(7):
             start_date = self.start_date + timedelta(days=i)
             end_date = start_date + timedelta(hours=8)
-            start_index = ac.get_index_from_date(
+            start_index = AppointmentControl().get_index_from_date(
                 start_date, self.start_date, self.period_duration
             )
             self.columns.append(
@@ -254,13 +243,13 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def appointments(self):
-        result = ac.get_appointments_by_period(self.period_start)
+        result = AppointmentControl().get_appointments_by_period(self.period_start)
         result.sort(key=lambda x: x.date)
         return result
 
     @property
     def times_between_appointments(self) -> list[tuple[datetime, timedelta]]:
-        return ac.get_time_between_appointments(
+        return AppointmentControl().get_time_between_appointments(
             start_date=self.period_start,
             end_date=self.period_end,
             minumum_free_period=timedelta(0),
@@ -268,7 +257,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def previous_period_appointments(self):
-        appointments = ac.get_appointments_by_period(
+        appointments = AppointmentControl().get_appointments_by_period(
             self.period_start - timedelta(hours=2)
         )
         appointments.sort(key=lambda x: x.date)
@@ -276,15 +265,15 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def next_period_appointments(self):
-        appointments = ac.get_appointments_by_period(
+        appointments = AppointmentControl().get_appointments_by_period(
             self.period_end + timedelta(hours=2)
         )
         appointments.sort(key=lambda x: x.date)
         return appointments
 
     def subscriber_update(self):
-        self.draw()
         self.cache = None
+        self.draw()
 
     def draw(self):
         appointment_count = len(self.appointments)
@@ -305,7 +294,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
     def move_left(self):
         self.period_start -= timedelta(days=1)
         self.period_end -= timedelta(days=1)
-        self.group_index = ac.get_index_from_date(
+        self.group_index = AppointmentControl().get_index_from_date(
             self.period_start, AppointmentsTab.start_date, self.period_duration
         )
         self.cache = None
@@ -314,7 +303,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
     def move_right(self):
         self.period_start += timedelta(days=1)
         self.period_end += timedelta(days=1)
-        self.group_index = ac.get_index_from_date(
+        self.group_index = AppointmentControl().get_index_from_date(
             self.period_start, AppointmentsTab.start_date, self.period_duration
         )
         self.draw()
@@ -324,9 +313,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.config(relief="flat")
 
     def show_focus(self):
-        print(self.previous_period_appointments, end="\n----------\n")
-        print(self.appointments, end="\n----------\n")
-        print(self.next_period_appointments, end="\n----------\n")
         if GridCell.current_focus:
             GridCell.current_focus.unfocus()
         self.config(relief="raised")
@@ -336,9 +322,9 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.show_focus()
         sidepanel = self.nametowidget(".!sidepanel")
 
-        if self.cache:
-            logger.log_debug(f"{self.winfo_name()} showing cached version")
-            return sidepanel.select_view("appointments", self, self.cache)
+        # if self.cache:
+        #     logger.log_debug(f"{self.winfo_name()} showing cached version")
+        #     return sidepanel.select_view("appointments", self, self.cache)
 
         min_duration = timedelta(minutes=cfg["minimum_appointment_duration"])
 

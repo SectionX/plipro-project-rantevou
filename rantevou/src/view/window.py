@@ -4,6 +4,8 @@
 την κάθε ξεχωριστή λειτουργία της εφαρμογής)
 """
 
+from __future__ import annotations
+
 import tkinter as tk
 from tkinter import ttk
 from typing import Any
@@ -38,6 +40,10 @@ pfieldbackground = color2
 
 class Notebook(ttk.Notebook):
     data: dict[str, Any] = {}
+
+
+def create_window() -> Window:
+    return Window()
 
 
 class Window(tk.Tk):

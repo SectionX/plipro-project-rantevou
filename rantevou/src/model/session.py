@@ -18,6 +18,19 @@ class Base(DeclarativeBase):
     pass
 
 
+from unicodedata import normalize
+
+
+def normalize_cus(customer):
+    customer.normalized_name = normalize("NFKD", customer.name).lower().replace("́", "")
+    try:
+        customer.normalized_surname = (
+            normalize("NFKD", customer.surname).lower().replace("́", "")
+        )
+    except:
+        pass
+
+
 def generate_fake_customer_data():
     from itertools import combinations
     from faker import Faker
@@ -30,12 +43,14 @@ def generate_fake_customer_data():
 
     for i in range(30000):
         try:
-            yield Customer(
+            cus = Customer(
                 name=fk.first_name(),
                 surname=fk.last_name(),
                 email=f"{''.join(next(combs_email))}@example.com",
                 phone=f"{start}{''.join(next(combs_phone))}",
             )
+            normalize_cus(cus)
+            yield cus
         except StopIteration:
             start += 1
             combs_phone = combinations("1234567890", 7)
@@ -86,6 +101,3 @@ def reset_initialize_fake_db() -> None:
 def reset_db() -> None:
     DB_PATH.unlink(missing_ok=True)
     Base.metadata.create_all(bind=engine)
-    # with SessionLocal() as session:
-    #     session.add_all(generate_fake_data())
-    #     session.commit()

@@ -17,7 +17,6 @@ from ..controller.mailer import Mailer
 from ..controller.exceptions import *
 
 #
-ac = AppointmentControl()
 logger = Logger("appointment-view")
 mailer = Mailer()
 

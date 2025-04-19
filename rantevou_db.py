@@ -11,3 +11,9 @@
 # if argv[1] == "a":
 #     ac.delete_appointment(int(argv[2]))
 #
+
+from tkinter import Tk
+
+
+class app(Tk):
+    pass

@@ -41,19 +41,8 @@ from ..controller.customers_controller import CustomerControl
 
 
 cfg = get_config()
-ac = AppointmentControl()
-cc = CustomerControl()
 mailer = Mailer()
 logger = Logger("sidepanel")
-
-
-class SubscriberInterface:
-    def __init__(self):
-        ac.add_subscription(self)
-        cc.add_subscription(self)
-
-    def subscriber_update(self):
-        raise NotImplementedError
 
 
 class SidePanel(ttk.Notebook):
@@ -249,7 +238,7 @@ class SearchBar(ttk.Frame):
                 user_input = timedelta(0)
 
         self.duration = user_input
-        self.search_results = ac.get_time_between_appointments(
+        self.search_results = AppointmentControl().get_time_between_appointments(
             minumum_free_period=self.duration
         )
         self.sidepanel.select_view(

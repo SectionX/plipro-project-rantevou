@@ -3,9 +3,8 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Protocol, runtime_checkable, Callable
-from ..controller import AppointmentControl
-
-ac = AppointmentControl()
+from ..controller.appointments_controller import AppointmentControl
+from ..controller import SubscriberInterface
 
 
 class PopUp(tk.Toplevel):
@@ -106,52 +105,52 @@ class EntryWithPlaceholder(ttk.Entry):
         return text
 
 
-class LabeledEntry(ttk.Frame):
+# class LabeledEntry(ttk.Frame):
 
-    def __init__(
-        self,
-        master,
-        var_type: type,
-        field_name: str,
-        callback_mapping: dict[str, Callable],
-        placeholder: str,
-        adjust_width_to_text: bool,
-        *args,
-        vertical=False,
-        geometry_manager="pack",
-        **kwargs,
-    ):
-        super().__init__(master, *args, **kwargs)
-        self.label = ttk.Label(self, text=field_name)
-        self.entry = ttk.Entry(self)
-        self.type = type
-        self.placeholder = placeholder
-        self.original_style = kwargs.get("style")
-        for event, callback in callback_mapping.items():
-            self.entry.bind(event, callback)
+#     def __init__(
+#         self,
+#         master,
+#         var_type: type,
+#         field_name: str,
+#         callback_mapping: dict[str, Callable],
+#         placeholder: str,
+#         adjust_width_to_text: bool,
+#         *args,
+#         vertical=False,
+#         geometry_manager="pack",
+#         **kwargs,
+#     ):
+#         super().__init__(master, *args, **kwargs)
+#         self.label = ttk.Label(self, text=field_name)
+#         self.entry = ttk.Entry(self)
+#         self.type = type
+#         self.placeholder = placeholder
+#         self.original_style = kwargs.get("style")
+#         for event, callback in callback_mapping.items():
+#             self.entry.bind(event, callback)
 
-        raise NotImplementedError
+#         raise NotImplementedError
 
-    def put_placeholder(self):
-        self.entry.delete(0, tk.END)
-        self.entry.insert(0, self.placeholder)
-        self.entry.config(style="placeholder.TEntry")
+#     def put_placeholder(self):
+#         self.entry.delete(0, tk.END)
+#         self.entry.insert(0, self.placeholder)
+#         self.entry.config(style="placeholder.TEntry")
 
-    def click(self):
-        if self.entry.get() == self.placeholder:
-            self.entry.delete(0, tk.END)
-        self.config(style="TEntry")
+#     def click(self):
+#         if self.entry.get() == self.placeholder:
+#             self.entry.delete(0, tk.END)
+#         self.config(style="TEntry")
 
-    def get_input(self) -> None | Any:
-        user_input = self.entry.get()
-        if user_input == self.placeholder:
-            return None
-        if user_input == "":
-            return None
-        try:
-            return self.type(user_input)
-        except Exception as e:
-            raise ValueError(f"Input ({user_input}) cannot be coerced to {self.type}")
+#     def get_input(self) -> None | Any:
+#         user_input = self.entry.get()
+#         if user_input == self.placeholder:
+#             return None
+#         if user_input == "":
+#             return None
+#         try:
+#             return self.type(user_input)
+#         except Exception as e:
+#             raise ValueError(f"Input ({user_input}) cannot be coerced to {self.type}")
 
 
 class SideView(ttk.Frame):

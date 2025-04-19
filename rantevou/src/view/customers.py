@@ -11,22 +11,15 @@ from ..model.types import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
+from ..controller import SubscriberInterface
 from threading import Thread, Semaphore
 
-semaphore = Semaphore(1)
+from sqlalchemy import or_
 
-cc = CustomerControl()
-ac = AppointmentControl()
+##profiling
+from time import perf_counter
+
 logger = Logger("customers-view")
-
-
-class SubscriberInterface:
-    def __init__(self):
-        ac.add_subscription(self)
-        cc.add_subscription(self)
-
-    def subscriber_update(self):
-        raise NotImplementedError
 
 
 @runtime_checkable
@@ -57,53 +50,63 @@ class SearchBar(ttk.Frame):
         self.searchbar.bind("<Visibility>", lambda x: self.searchbar.focus())
         self.searchbar.pack()
         self.thread: Thread | None = None
+        self.cancel_id: str | None = None
 
-    def search(self, event: tk.Event):
-        self.after(0, lambda: self._search(event))
+    def search(self, event: tk.Event, execute=False):
+        if self.cancel_id and not execute:
+            self.after_cancel(self.cancel_id)
+            self.cancel_id = None
 
-    def _search(self, event: tk.Event):
-        symbol = event.keysym
-        char = event.char
+        if not execute:
+            symbol = event.keysym
+            char = event.char
 
-        if symbol == "Escape":
-            self.key_sequence = []
-            self.sheet.populate_sheet()
-            self.searchbar.delete(0, tk.END)
+            if symbol == "Escape":
+                self.key_sequence = []
+                CustomersTab.customers = (
+                    CustomerControl().model.session.query(Customer).all()
+                )
+                self.sheet.populate_sheet()
+                self.searchbar.delete(0, tk.END)
+                return
+
+            if symbol == "BackSpace":
+                self.key_sequence.pop()
+            else:
+                self.key_sequence.append(char)
+
+            self.cancel_id = self.after(400, lambda: self.search(event, execute=True))
             return
 
-        if symbol == "BackSpace":
-            self.key_sequence.pop()
-            self.sheet.populate_sheet()
-        else:
-            self.key_sequence.append(char)
+        print("".join(self.key_sequence))
+        start = perf_counter()
+        results = CustomerControl().search("".join(self.key_sequence))
+        logger.log_debug("Search: " + str(perf_counter() - start))
 
-        keysequence = "".join(self.key_sequence).lower()
+        start = perf_counter()
+        self.sheet.populate_sheet(results)
+        logger.log_debug("Refresh: " + str(perf_counter() - start))
+        # end_ptr = len(children) - 1
 
-        children = self.sheet.get_children()
-        if len(children) == 0:
-            return
+        # for i, item in enumerate(children):
 
-        end_ptr = len(children) - 1
+        #     values = self.sheet.item(item)["values"]
+        #     if i == end_ptr:
+        #         if not check_values(values, keysequence):
+        #             self.sheet.delete(item)
+        #         break
 
-        for i, item in enumerate(children):
+        #     if check_values(values, keysequence):
+        #         continue
 
-            values = self.sheet.item(item)["values"]
-            if i == end_ptr:
-                if not check_values(values, keysequence):
-                    self.sheet.delete(item)
-                break
+        #     while end_ptr > i:
+        #         swap_values = self.sheet.item(children[end_ptr])["values"]
+        #         self.sheet.item(item, values=swap_values)
+        #         self.sheet.delete(children[end_ptr])
+        #         end_ptr -= 1
 
-            if check_values(values, keysequence):
-                continue
-
-            while end_ptr > i:
-                swap_values = self.sheet.item(children[end_ptr])["values"]
-                self.sheet.item(item, values=swap_values)
-                self.sheet.delete(children[end_ptr])
-                end_ptr -= 1
-
-                if check_values(swap_values, keysequence):
-                    break
+        #         if check_values(swap_values, keysequence):
+        #             break
 
 
 class CustomerSheet(ttk.Treeview, SubscriberInterface):
@@ -135,9 +138,14 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
     def subscriber_update(self):
         self.populate_sheet()
 
-    def populate_sheet(self):
+    def populate_sheet(self, search_data: list[Customer] | None = None):
+        if search_data is None:
+            data = CustomersTab.customers[:100]
+        else:
+            data = search_data[:100]
+
         self.delete(*self.get_children())
-        for customer in CustomersTab.customers:
+        for customer in data:
             values = customer.values
             values = [value or "" for value in values]
             self.insert("", "end", values=values)
@@ -215,16 +223,18 @@ class ManagementBar(ttk.Frame):
         )
 
         if confirmation:
-            cc.delete_customer(Customer(id=id))
+            CustomerControl().delete_customer(Customer(id=id))
 
 
 class CustomersTab(AppFrame, SubscriberInterface):
-    customers: list[Customer] = cc.get_customers()
+    customers: list[Customer]
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
 
+        self.customers = CustomerControl().get_customers()
+        CustomersTab.customers = self.customers
         self.customer_sheet = CustomerSheet(self)
         self.search_bar = SearchBar(self, self.customer_sheet)
         self.management_bar = ManagementBar(self, self.customer_sheet)
@@ -234,4 +244,4 @@ class CustomersTab(AppFrame, SubscriberInterface):
         self.management_bar.pack(fill="x")
 
     def subscriber_update(self):
-        CustomersTab.customers = cc.get_customers()
+        CustomersTab.customers = CustomerControl().get_customers()

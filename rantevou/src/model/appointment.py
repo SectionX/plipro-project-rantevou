@@ -61,22 +61,22 @@ class Cache:
         return hit
 
     def update(self, appointment, old_date: datetime | None = None) -> bool:
-        if old_date:
-            period = self.data[self.hash(old_date)]
-        else:
-            period = self.data[self.id_index[appointment.id]]
-
-        for i, existing_appointment in enumerate(period):
-            if existing_appointment.id == appointment.id:
-                period[i] = appointment
-                return True
-        return False
+        try:
+            self.delete(appointment)
+            self.add(appointment)
+        except Exception as e:
+            logger.log_error(str(e))
+            return False
+        return True
 
     def delete(self, appointment: Appointment) -> bool:
-        date_index = self.hash(appointment.date)
+        date_index = self.id_index[appointment.id]
+        self.id_index.pop(appointment.id)
         try:
-            self.data[date_index].remove(appointment)
-            self.id_index.pop(appointment.id)
+            for i, existing in enumerate(self.data[date_index]):
+                if existing.id == appointment.id:
+                    del self.data[date_index][i]
+                    break
             return True
         except ValueError:
             return False

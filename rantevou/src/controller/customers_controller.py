@@ -11,17 +11,15 @@ logger = Logger("customer-controller")
 
 class CustomerControl:
     _instance = None
+    model: CustomerModel
 
     def __new__(cls, *args, **kwargs) -> CustomerControl:
         if cls._instance:
             return cls._instance
 
         cls._instance = super(CustomerControl, cls).__new__(cls, *args, **kwargs)
+        cls.model = CustomerModel()
         return cls._instance
-
-    def __init__(self):
-        self.model = CustomerModel()
-        self.customer = Customer
 
     def get_customers(self) -> list[Customer]:
         return self.model.get_customers()
@@ -43,3 +41,8 @@ class CustomerControl:
 
     def add_subscription(self, node) -> None:
         self.model.add_subscriber(node)
+
+    def search(self, string: str) -> list[Customer]:
+        if string == "":
+            return self.model.customers
+        return self.model.customer_search(string)

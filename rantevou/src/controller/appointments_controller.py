@@ -31,16 +31,15 @@ class AppointmentControl:
     """
 
     _instance = None
+    mode: AppointmentModel
 
     def __new__(cls, *args, **kwargs) -> AppointmentControl:
         if cls._instance:
             return cls._instance
 
         cls._instance = super(AppointmentControl, cls).__new__(cls, *args, **kwargs)
+        cls.model = AppointmentModel()
         return cls._instance
-
-    def __init__(self):
-        self.model = AppointmentModel()
 
     def get_appointments(self) -> dict[int, list[Appointment]]:
         """

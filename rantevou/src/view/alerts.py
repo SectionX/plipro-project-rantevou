@@ -13,8 +13,8 @@ from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
 from ..controller import SubscriberInterface
+from typing import Protocol
 
-ac = AppointmentControl()
 logger = Logger("alerts-view")
 mailer = Mailer()
 
@@ -129,7 +129,7 @@ class AlertsView(SideView, SubscriberInterface):
 
     def update_content(self, *args, **kwargs):
         self.appointments = list(
-            ac.get_appointments_from_to_date(
+            AppointmentControl().get_appointments_from_to_date(
                 start=datetime.now(), end=datetime.now() + timedelta(days=1)
             )
         )

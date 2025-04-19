@@ -1,8 +1,10 @@
 from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Unicode, Column, or_
 from typing import Protocol
 from .session import Base, session
 from ..controller.logging import Logger
+from unicodedata import normalize
 
 logger = Logger("customer-model")
 
@@ -17,8 +19,10 @@ class Customer(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     surname: Mapped[str] = mapped_column(nullable=True)
-    email: Mapped[str] = mapped_column(unique=True, nullable=True)
-    phone: Mapped[str] = mapped_column(unique=True, nullable=True)
+    normalized_name: Mapped[str] = mapped_column(nullable=False, index=True)
+    normalized_surname: Mapped[str] = mapped_column(nullable=True, index=True)
+    email: Mapped[str] = mapped_column(unique=True, nullable=True, index=True)
+    phone: Mapped[str] = mapped_column(unique=True, nullable=True, index=True)
 
     appointments = relationship(
         "Appointment",
@@ -38,6 +42,8 @@ class Customer(Base):
             self.surname,
             self.phone,
             self.email,
+            self.normalized_name,
+            self.normalized_surname,
         ]
 
     @classmethod
@@ -106,6 +112,17 @@ class CustomerModel:
             .first()
         )
 
+    def normalize(self, customer: Customer):
+        customer.normalized_name = (
+            normalize("NFKD", customer.name).lower().replace("́", "")
+        )
+        try:
+            customer.normalized_surname = (
+                normalize("NFKD", customer.surname).lower().replace("́", "")
+            )
+        except:
+            pass
+
     def add_customer(self, customer: Customer) -> tuple[int | None, bool]:
         """
         Δημιουργία καινούριου πελάτη. Ελέγχει αν υπάρχει ήδη ο πελάτης
@@ -119,7 +136,12 @@ class CustomerModel:
         # Σημαντική προεπεξεργασία ώστε τα κενά strings να μετατρέπονται
         # σε None. Αλλιώς θεωρεί ότι το "" είναι πληροφορία και δεν δέχεται
         # δεύτερο πελάτη με κενό τηλέφωνο η email.
-        self.sanitize(customer)
+        try:
+            self.sanitize(customer)
+            self.normalize(customer)
+        except:
+            logger.log_warn(f"Failed to create customer")
+            return None, False
 
         # Έλεγχος ύπαρξης πελάτη
         existing_customer = self.filter_by_all(customer)
@@ -200,8 +222,11 @@ class CustomerModel:
         Επιστρέφει boolean επιτυχούς ενημέρωσης
         """
         logger.log_info(f"Excecuting update of {new_customer}")
-
-        self.sanitize(new_customer)
+        try:
+            self.sanitize(new_customer)
+            self.normalize(new_customer)
+        except:
+            return False
 
         # Αναζητεί την παλιά εγγραφή του πελάτη
         old_customer = None
@@ -222,6 +247,8 @@ class CustomerModel:
         # Ενημερώνει με τα καινούρια στοιχεία
         old_customer.name = new_customer.name
         old_customer.surname = new_customer.surname
+        old_customer.normalized_name = new_customer.normalized_name
+        old_customer.normalized_surname = new_customer.normalized_surname
         old_customer.phone = new_customer.phone
         old_customer.email = new_customer.email
 
@@ -280,3 +307,19 @@ class CustomerModel:
             if cached_customer.id == customer.id:
                 self.customers[i] = customer
                 break
+
+    def customer_search(self, query: str) -> list[Customer]:
+        return (
+            session.query(Customer)
+            .filter(
+                or_(
+                    Customer.name.like(f"{query}%"),
+                    Customer.surname.like(f"{query}%"),
+                    Customer.normalized_name.like(f"{query}%"),
+                    Customer.normalized_surname.like(f"{query}%"),
+                    Customer.email.like(f"{query}%"),
+                    Customer.phone.like(f"{query}%"),
+                )
+            )
+            .all()
+        )

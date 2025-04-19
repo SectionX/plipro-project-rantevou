@@ -14,8 +14,6 @@ from ..controller.logging import Logger
 from ..controller.mailer import Mailer
 from .entries import CustomerEntry
 
-cc = CustomerControl()
-ac = AppointmentControl()
 logger = Logger("customer-manager")
 mailer = Mailer()
 
@@ -39,7 +37,7 @@ class AddCustomerView(SideView):
 
     def save(self):
         new_customer = self.customer_entry.get()
-        success = cc.create_customer(new_customer)
+        success = CustomerControl().create_customer(new_customer)
         if not success:
             showerror(message="Failed to add new customer")
         else:
@@ -76,7 +74,7 @@ class EditCustomerView(SideView):
 
     def save(self):
         new_customer = self.customer_entry.get()
-        success = cc.update_customer(new_customer)
+        success = CustomerControl().update_customer(new_customer)
         if not success:
             showerror(message="Failed to update customer")
         else:

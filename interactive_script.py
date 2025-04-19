@@ -14,8 +14,3 @@ class Test:
                 if index < start:
                     continue
                 yield item
-
-
-test = Test()
-for item in test:
-    print(item)

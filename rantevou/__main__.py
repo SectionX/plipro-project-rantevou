@@ -1,7 +1,9 @@
 from .src.model.session import initialize_db, reset_initialize_fake_db, reset_db
 from .src.controller.logging import Logger
-from .src.view.window import Window
 from sys import argv, exit
+
+from .src.view.window import Window
+
 
 if len(argv) > 1:
     if argv[1] == "reset":
@@ -9,9 +11,9 @@ if len(argv) > 1:
     elif argv[1] == "reset-fake":
         reset_initialize_fake_db()
     else:
-        raise Exception("Unknown argument")
-    exit(0)
+        exit(0)
 
+initialize_db()
 Logger.level = 0
 
 
@@ -36,7 +38,6 @@ def main():
     logger = Logger("main")
     logger.log_info("Starting Rantevou")
 
-    initialize_db()
     root = Window()
     root.mainloop()
 
