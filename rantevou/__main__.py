@@ -4,7 +4,7 @@ from sys import argv, exit
 
 from .src.view.window import Window
 
-
+# TODO Χρήση argparse αντι αυτού του σχήματος
 if len(argv) > 1:
     if argv[1] == "reset":
         reset_db()
@@ -14,6 +14,8 @@ if len(argv) > 1:
         exit(0)
 
 initialize_db()
+
+# TODO Μεταφορά σε option
 Logger.level = 0
 
 

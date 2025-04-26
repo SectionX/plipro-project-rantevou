@@ -1,12 +1,11 @@
 from pathlib import Path
+from unicodedata import normalize
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "rantevou.db"
-# SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
-
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{str(DB_PATH)}"  # Προσωρινό
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{str(DB_PATH)}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -18,9 +17,7 @@ class Base(DeclarativeBase):
     pass
 
 
-from unicodedata import normalize
-
-
+# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def normalize_cus(customer):
     customer.normalized_name = normalize("NFKD", customer.name).lower().replace("́", "")
     try:
@@ -31,6 +28,7 @@ def normalize_cus(customer):
         pass
 
 
+# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def generate_fake_customer_data():
     from itertools import combinations
     from faker import Faker
@@ -57,6 +55,7 @@ def generate_fake_customer_data():
         print(i, end="\r")
 
 
+# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def generate_fake_appointment_data():
     from datetime import datetime, timedelta
     from random import randint
@@ -89,6 +88,7 @@ def initialize_db() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def reset_initialize_fake_db() -> None:
     DB_PATH.unlink(missing_ok=True)
     Base.metadata.create_all(bind=engine)
@@ -98,6 +98,7 @@ def reset_initialize_fake_db() -> None:
         session.commit()
 
 
+# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def reset_db() -> None:
     DB_PATH.unlink(missing_ok=True)
     Base.metadata.create_all(bind=engine)

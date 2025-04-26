@@ -1,62 +1,14 @@
 from __future__ import annotations
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Unicode, Column, or_
-from typing import Protocol
-from .session import Base, session
-from ..controller.logging import Logger
+
 from unicodedata import normalize
+from sqlalchemy import or_
+
+from .session import session
+from .interfaces import Subscriber
+from .entities import Customer
+from ..controller.logging import Logger
 
 logger = Logger("customer-model")
-
-
-class Subscriber(Protocol):
-    def subscriber_update(self): ...
-
-
-class Customer(Base):
-    __tablename__ = "customer"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False)
-    surname: Mapped[str] = mapped_column(nullable=True)
-    normalized_name: Mapped[str] = mapped_column(nullable=False, index=True)
-    normalized_surname: Mapped[str] = mapped_column(nullable=True, index=True)
-    email: Mapped[str] = mapped_column(unique=True, nullable=True, index=True)
-    phone: Mapped[str] = mapped_column(unique=True, nullable=True, index=True)
-
-    appointments = relationship(
-        "Appointment",
-        back_populates="customer",
-        foreign_keys="[Appointment.customer_id]",
-    )
-
-    @property
-    def full_name(self) -> str:
-        return f"{self.name} {self.surname or ''}"
-
-    @property
-    def values(self) -> list:
-        return [
-            self.id,
-            self.name,
-            self.surname,
-            self.phone,
-            self.email,
-        ]
-
-    @classmethod
-    def field_names(cls) -> list[str]:
-        return ["id", "name", "surname", "phone", "email", "appointments"]
-
-    def __str__(self) -> str:
-        return (
-            f"Customer(id={self.id}, name={self.name}, "
-            f"surname={self.surname}, email={self.email}"
-            f", phone={self.phone})"
-        )
-
-    def __repr__(self) -> str:
-        return self.__str__()
 
 
 class CustomerModel:

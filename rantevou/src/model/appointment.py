@@ -1,6 +1,4 @@
 """
-Ορίζει το μοντέλο των ραντεβού και το API διαχείρισης των δεδομένων.
-
 Πιθανές βελτιώσεις:
 1. Ασύγχρονη λειτουργία ενημέρωσης της βάσης δεδομένων
 2. Ενημέρωση του cache και των συνδρομητών με πιο αποτελεσματικό τρόπο
@@ -9,235 +7,27 @@
 """
 
 from __future__ import annotations
+
 from datetime import datetime, timedelta
-from typing import Any, Generator
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, func
+from sqlalchemy import func
 
-from .session import Base, session
+from .session import session
+from .entities import Appointment
+from .caching import AppointmentCache
+from .interfaces import Subscriber
+
 from ..controller.logging import Logger
 
-from typing import Protocol
 
 logger = Logger("appointment-model")
 PERIOD = timedelta(hours=2)
 
 
-class Subscriber(Protocol):
-    """
-    Interface για όλα τα στοιχεία που κάνουν subscribe για να
-    ενημερώνονται όταν γίνονται σημαντικές αλλαγές στην  βάση
-    δεδομένων
-    """
-
-    def subscriber_update(self):
-        pass
-
-
-class Cache:
-
-    def __init__(self, model: AppointmentModel):
-        self.data: dict[int, list[Appointment]] = {}
-        self.id_index: dict[int, int] = {}
-        self.start: int
-        self.end: int
-        self.now = datetime.now().replace(
-            hour=9, minute=0, second=0, microsecond=0
-        )  # TODO Config setting
-        self.min_index: int
-        self.max_index: int
-        self.model = model
-
-    def add(self, appointment: Appointment) -> bool:
-        hit = True
-        index = self.hash(appointment.date)
-        value = self.data.get(index)
-        if value is None:
-            hit = False
-            self.data.setdefault(index, [])
-        self.data[index].append(appointment)
-        self.id_index[appointment.id] = index
-        return hit
-
-    def update(self, appointment, old_date: datetime | None = None) -> bool:
-        try:
-            self.delete(appointment)
-            self.add(appointment)
-        except Exception as e:
-            logger.log_error(str(e))
-            return False
-        return True
-
-    def delete(self, appointment: Appointment) -> bool:
-        date_index = self.id_index[appointment.id]
-        self.id_index.pop(appointment.id)
-        try:
-            for i, existing in enumerate(self.data[date_index]):
-                if existing.id == appointment.id:
-                    del self.data[date_index][i]
-                    break
-            return True
-        except ValueError:
-            return False
-
-    def lookup(self, date_index: int) -> list[Appointment]:
-        values = self.data.get(date_index)
-        if values is None:
-            self.query_by_date(self.unhash(date_index), self.unhash(date_index + 1))
-            return self.lookup(date_index)
-        return values
-
-    def lookup_date(self, date: datetime) -> list[Appointment]:
-        return self.lookup(self.hash(date))
-
-    def lookup_id(self, id: int) -> Appointment | None:
-        appointments = self.data.get(self.id_index[id])
-
-        if appointments is None:
-            return None
-
-        for appointment in appointments:
-            if appointment.id == id:
-                return appointment
-
-        return None
-
-    def hash(self, date: datetime) -> int:
-        return (date - self.now) // PERIOD
-
-    def unhash(self, index: int) -> datetime:
-        return self.now + index * PERIOD
-
-    def iter_date_range(
-        self, start: datetime, end: datetime | None
-    ) -> Generator[Appointment, None, None]:
-        if end is None:
-            end = start
-        self.start = self.hash(start)
-        self.end = self.hash(end)
-        return self.__next__()
-
-    def __iter__(self) -> Generator[Appointment, None, None]:
-        raise Exception("Use Cache.iter_date_range instead")
-
-    def __next__(self) -> Generator[Appointment, None, None]:
-        for i in range(self.start, self.end + 1):
-            for appointment in self.lookup(i):
-                yield appointment
-
-    def query_by_date(self, start: datetime, end: datetime):
-        result = self.model.get_appointments_from_to_date(start, end)
-        if len(result) == 0:
-            for i in range(self.hash(start), self.hash(end) + 1):
-                self.data.setdefault(self.hash(start), [])
-        for appointment in result:
-            self.add(appointment)
-
-    def query_by_id(self, id: int):
-        appointment = self.model.get_appointment_by_id(id)
-        if appointment is None:
-            return
-        self.query_by_date(appointment.date, appointment.end_date)
-
-
-class Appointment(Base):
-    """
-    Ορισμός της οντότητας "ραντεβού"
-        id: Εσωτερικός μοναδικός αριθμός, παράγεται από την βάση δεδομένων
-        date: Ημερομηνία του ραντεβού, μικρότερες μονάδες από τα λεπτά αγνοούνται
-        is_alerted: Εάν ο πελάτης έχει ενημερωθεί με email
-        customer_id: Εξωτερικό κλειδί, id του πελάτη που σχετίζεται με το ραντεβού
-
-        customer: Ο πελάτης που έχει σχέση με το ραντεβού, ορίζεται από το customer_id
-    """
-
-    __tablename__ = "appointment"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    date: Mapped[datetime] = mapped_column(nullable=False, unique=True, index=True)
-    is_alerted: Mapped[bool] = mapped_column(default=False)
-    duration: Mapped[timedelta] = mapped_column(default=timedelta(minutes=20))
-    customer_id: Mapped[int | None] = mapped_column(
-        ForeignKey("customer.id"), nullable=True
-    )
-    employee_id: Mapped[int] = mapped_column(default=0)
-
-    customer = relationship(
-        "Customer",
-        back_populates="appointments",
-        foreign_keys="[Appointment.customer_id]",
-    )
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-    def __str__(self) -> str:
-        return (
-            f"Appointment(id={self.id}, date={self.date}, "
-            f"customer_id={self.customer_id}, duration=({self.duration}))"
-        )
-
-    @property
-    def values(self) -> tuple[int, datetime, bool, timedelta, int | None]:
-        return (self.id, self.date, self.is_alerted, self.duration, self.customer_id)
-
-    @property
-    def end_date(self) -> datetime:
-        """
-        Υπολογίζει την ακριβή ημερομηνία που θα πρέπει να έχει
-        ολοκληρωθεί το ραντεβού
-        """
-        return self.date + self.duration
-
-    @property
-    def time_to_appointment(self) -> timedelta:
-        """
-        Υπολογίζει τον χρόνο που απομένει μέχρι το ραντεβού
-        """
-        return self.date - datetime.now()
-
-    def overlap(self, other: Appointment):
-        if self.id == other.id:
-            return False
-        return not (self.date >= other.end_date or self.end_date <= other.date)
-
-    def time_between_appointments(self, appointment: Appointment) -> timedelta:
-        """
-        Υπολογίζει τον χρόνο μεταξύ 2 ραντεβού λαμβάνοντας υπόψην
-        τον χρόνο ολοκλήρωσης αυτών
-        """
-        if self.date > appointment.date:
-            return self.date - appointment.end_date
-        return appointment.date - self.end_date
-
-    def time_between_dates(self, date: datetime) -> timedelta:
-        """
-        Βοηθητική συνάρτηση υπολογισμού χρόνου με αγνωστικό
-        χαρακτήρα
-        """
-        return abs(self.date - date)
-
-    def to_dict(self):
-        """
-        Μετατροπή του τύπου Appointment σε τύπο dict
-        """
-        dict_: dict[str, Any] = {}
-        dict_.update(self.__dict__)
-        for k in dict_.keys():
-            if k.startswith("_"):
-                dict_.pop(k)
-
-
 class AppointmentModel:
     """
     Ορίζει το μοντέλο των δεδομένων και διαχειρίζεται την αναζήτηση και
-    ανάκτηση πληροφορίας.
-
-        appointments: Το cache με όλα τα ραντεβού που διατηρείται στην μνήμη για γρήγορη ανάκτηση
-        subscribers: Όλα τα στοιχεία του view που ενημερώνονται όταν αλλάζουν τα δεδομένα στην βάση
-        session: Η σύνδεση με την βάση δεδομένων. Το πρόγραμμα χρησιμοποιεί μόνο μια σύνδεση που ορίζεται στο sessions.py
-
+    ανάκτηση πληροφορίας. Κάνει αυτόματο caching τα αποτελέσματα αναζήτησης.
     """
 
     _instance = None
@@ -245,16 +35,20 @@ class AppointmentModel:
     # appointments: list[Appointment] = []
     subscribers: list[Subscriber] = []
     max_id = 0
-    cache: Cache
+    cache: AppointmentCache
 
     def __new__(cls, *args, **kwargs) -> AppointmentModel:
+        """
+        Εφαρμογή μοτίβου singleton. Αρχικοποιεί καινούριο αντικείμενο μόνο εάν
+        δεν υπάρχει ήδη.
+        """
         if cls._instance is None:
             cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
             cls.max_id = session.query(func.max(Appointment.id)).scalar()
             if cls.max_id is None:
                 cls.max_id = 0
 
-            cls.cache = Cache(cls._instance)
+            cls.cache = AppointmentCache(cls._instance)
 
             cls.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
             cls.min_date = cls.now - timedelta(days=10)
@@ -276,6 +70,9 @@ class AppointmentModel:
         return cls._instance
 
     def has_overlap(self, appointment: Appointment) -> bool:
+        """
+        Ελέγχει εάν η ημερομηνία ενός ραντεβού συμπίπτει με ήδη υπάρχοντα
+        """
         for existing_appointment in self.cache.iter_date_range(
             appointment.date, appointment.end_date
         ):
@@ -328,6 +125,9 @@ class AppointmentModel:
         return appointment_with_id.id
 
     def is_similar(self, appointment1: Appointment, appointment2: Appointment):
+        """
+        Ελέγχει εάν τα σημαντικά στοιχεία ενός ραντεβού είναι ίδια
+        """
         return all(
             (
                 appointment1.id == appointment2.id,
@@ -381,19 +181,27 @@ class AppointmentModel:
             return False
 
         # Ενημέρωση του cache
-        self.cache.update(old_appointment, appointment.date)
+        self.cache.update(old_appointment)
 
         # Ενημέρωση των subscribers
         self.update_subscribers()
         return True
 
     def delete_appointment(self, appointment: Appointment) -> bool:
+        """
+        Διαγραφή ενός ραντεβού από την βάση δεδομένων και ενημέρωση cache.
+        Ενημερώνει το τρέχων μέγιστο id για πιο γρήγορη προσθήκη νέων ραντεβού.
+        Επιβάλλει στο ραντεβού προς διαγραφή να έχει id.
+        """
         logger.log_info(f"Excecuting deletion of {appointment=}")
 
+        # Έλεγχος αν το ραντεβού έχει id
         if appointment.id is None:
             logger.log_error("Appointment for deletion must have an id")
             return False
 
+        # Εύρεση του ραντεβού στην βάση δεδομένων για επιβεβαίωση του id και
+        # σύνδεση με την sqlalchemy
         appointment_to_delete = self.get_appointment_by_id(appointment.id)
         if appointment_to_delete is None:
             logger.log_error("Failed to locate appointment in db")
@@ -418,8 +226,8 @@ class AppointmentModel:
 
     def get_appointments(self) -> dict[int, list[Appointment]]:
         """
-        Διπλή λειτουργία ανάκτησης στοιχείων απο την βάση δεδομένων και
-        διάθεσης του cache στις σχετικές μονάδες.
+        Επιστρέφει όλα τα ραντεβού που έχουν αποθηκευτεί στο cache κατα
+        την αρχικοποίηση και αργότερα με τις ενέργειες του χρήστη.
         """
         logger.log_debug(f"Excecuting query of all appointments")
         return self.cache.data
@@ -441,7 +249,9 @@ class AppointmentModel:
     def get_appointments_from_to_date(
         self, from_date: datetime, to_date: datetime
     ) -> list[Appointment]:
-
+        """
+        Συνάρτηση συνήθους περίπτωσης
+        """
         result = (
             self.session.query(Appointment)
             .filter(Appointment.date >= from_date, Appointment.date < to_date)
@@ -451,7 +261,10 @@ class AppointmentModel:
         return result
 
     def get_appointments_by_period(self, date: datetime):
-
+        """
+        Ειδικευμένη συνάρτηση που επιστρέφει όλα τα ραντεβού εντός
+        της περιόδου που ανήκει η ημερομηνία date
+        """
         return [*self.cache.iter_date_range(date, date)]
 
     def get_time_between_appointments(
@@ -461,18 +274,9 @@ class AppointmentModel:
         minumum_free_period: timedelta = PERIOD,
     ) -> list[tuple[datetime, timedelta]]:
         """
-        Συνάρτηση αναζήτησης κενού χρόνου μεταξύ των ραντεβού. Σκοπός είναι
-        ο χρήστης να μπορεί γρήγορα να βρεί σε ποιές ημερομηνίες μπορεί να
-        εξυπηρετήσει τον πελάτη με βάση τον προβλεπόμενο χρόνο που απατείται
-        για τις ανάγκες του
-
-        Η παράμετρος include_start ορίζει αν η αρχική ημερομηνία θα υπολογιστεί
-        ώς "ραντεβού".
+        Συνάρτηση αναζήτησης κενού χρόνου μεταξύ των ραντεβού.
         """
         logger.log_debug(f"Excecuting calculation of time between appointments")
-
-        # Για λόγους στατιστικών στοιχείων, εάν δεν δωθεί αρχική ημερομηνία,
-        # υπολογίζει από την αρχή
 
         result_date: list[datetime] = [start_date]
         result_duration: list[timedelta] = []
