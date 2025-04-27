@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..model.types import Customer, CustomerModel
+from ..model.entities import Customer
+from ..model.customer import CustomerModel
 from .logging import Logger
 
 # TODO πρέπει να προσθεθούν σε όλα τα functions έλεγχος σφαλμάτων
@@ -21,8 +22,17 @@ class CustomerControl:
         cls.model = CustomerModel()
         return cls._instance
 
-    def get_customers(self) -> list[Customer]:
-        return self.model.get_customers()
+    def get_customers(
+        self,
+        page_number: int = 0,
+        page_length: int = 0,
+        search_query: str = "",
+        sorted_by: str = "",
+        descending: bool = False,
+    ) -> tuple[list[Customer], int]:
+        return self.model.get_customers(
+            page_number, page_length, search_query, sorted_by, descending
+        )
 
     def create_customer(self, customer: Customer):
         return self.model.add_customer(customer)

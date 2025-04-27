@@ -146,7 +146,7 @@ class Customer(Base):
 
     @classmethod
     def field_names(cls) -> list[str]:
-        return ["id", "name", "surname", "phone", "email", "appointments"]
+        return ["id", "name", "surname", "phone", "email"]
 
     def __str__(self) -> str:
         return (

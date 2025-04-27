@@ -87,7 +87,7 @@ class Grid(ttk.Frame):
     def __init__(self, root, start_date, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
         self.start_date = start_date
-        self.period_duration = timedelta(hours=2)
+        self.period_duration = cfg["group_period"]
         self.columns = []
 
         self.navbar = GridNavBar(self, *args, **kwargs)
@@ -100,7 +100,7 @@ class Grid(ttk.Frame):
 
         for i in range(7):
             start_date = self.start_date + timedelta(days=i)
-            end_date = start_date + timedelta(hours=8)
+            end_date = start_date + timedelta(hours=cfg["working_hours"])
             start_index = AppointmentControl().get_index_from_date(
                 start_date, self.start_date, self.period_duration
             )
@@ -310,15 +310,28 @@ class GridCell(ttk.Frame, SubscriberInterface):
         self.cache = None
 
     def unfocus(self):
+        """
+        Αλλάζει το πλαίσιο γύρω από το κελί ώστε να δείχνει ανενεργό στον χρήστη
+        """
         self.config(relief="flat")
 
     def show_focus(self):
+        """
+        Αλλάζει το πλαίσιο γύρω από το κελί ώστε να δείχνει ενεργό στον χρήστη
+        """
         if GridCell.current_focus:
             GridCell.current_focus.unfocus()
         self.config(relief="raised")
         GridCell.current_focus = self
 
     def show_in_sidepanel(self):
+        """
+        Εντολή για την εμφανίση των ραντεβού στο sidepanel. Φτιάχνει μια λίστα
+        από γεμάτες και άδειες περιόδους ώστε ο χρήστης με ένα κουμπί να προσθέτει
+        ραντεβού στην ημερομηνία που θέλει. Ελέγχει τις προηγούμενες και επόμενες
+        περιόδους ώστε να μην υπάρχει overlap.
+        """
+
         self.show_focus()
         sidepanel = self.nametowidget(".!sidepanel")
 
@@ -328,6 +341,8 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
         min_duration = timedelta(minutes=cfg["minimum_appointment_duration"])
 
+        # Εάν δεν υπάρχουν ραντεβού στην συγκεκριμένη περίοδο, κατασκευάζει μια
+        # λίστα με άδεια ραντεβού
         if len(self.appointments) == 0:
             return sidepanel.select_view(
                 "appointments",
@@ -341,8 +356,11 @@ class GridCell(ttk.Frame, SubscriberInterface):
                 ],
             )
 
+        # Κοιτάζει την προηγούμενη και επόμενη περίοδο. Εάν δεν υπάρχουν ραντεβού
+        # τότε δημιουργεί πλασματικά ώστε να οριστεί η αρχή και το τέλος
         previous_appointments = self.previous_period_appointments
         next_appointments = self.next_period_appointments
+
         if len(previous_appointments) == 0:
             previous_appointments = [
                 Appointment(date=self.period_start, duration=timedelta(0))
@@ -353,6 +371,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
                 Appointment(date=self.period_end, duration=timedelta(0))
             ]
 
+        # Ενώνει όλα τα ραντεβού σε μια διπλή λίστα για πιο γρήγορα operations
         appointments: deque[Appointment] = deque(
             chain(
                 previous_appointments,
@@ -363,13 +382,20 @@ class GridCell(ttk.Frame, SubscriberInterface):
         slots: list[Appointment] = []
         is_eligible = lambda a, b: a < self.period_end and b > self.period_start
 
+        # Ανα ζεύγη, μέχρι να αδείασει η διπλή λίστα, τα βάζει στην τελική λίστα "slots",
+        # με μορφή "Προηγούμενο ραντεβού | Άδειες περίοδοι 20 λεπτών ή λιγότερο | Επόμενο ραντεβού"
         while len(appointments) > 1:
             previous = appointments.popleft()
             next = appointments[0]
 
+            # Η συνάρτηση is_eligible ελέγχει αν ο χρόνος του ραντεβού είναι εντός
+            # της περιόδου που αφορά το συγκεκριμένο κελί
             if is_eligible(previous.date, previous.end_date):
                 slots.append(previous)
 
+            # diff -> ελεύθερος χρόνος μεταξύ 2 ραντεβού
+            # full_appointments -> πόσα 20λεπτα ραντεβού χωράνε στο diff
+            # remainer -> χρόνος λιγότερος των 20 λεπτών που απομένει
             diff = previous.time_between_appointments(next)
             full_appointments = diff // min_duration
             remainer = diff % min_duration
@@ -405,5 +431,4 @@ class GridCell(ttk.Frame, SubscriberInterface):
             if is_eligible(last.date, last.end_date):
                 slots.append(last)
 
-        self.cache = slots
         sidepanel.select_view("appointments", self, slots)

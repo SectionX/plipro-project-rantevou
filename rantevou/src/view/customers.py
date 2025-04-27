@@ -11,6 +11,10 @@ from ..model.types import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller import SubscriberInterface
+from ..controller import get_config
+
+config = get_config()
+
 
 ##profiling
 from time import perf_counter
@@ -35,12 +39,10 @@ class SearchBar(ttk.Frame):
     searchbar: ttk.Entry
     customers: list[Customer]
     sheet: CustomerSheet
-    key_sequence: list[str]
 
     def __init__(self, master, sheet: CustomerSheet, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.sheet = sheet
-        self.key_sequence = []
         self.searchbar = ttk.Entry(self)
         self.searchbar.bind("<Key>", self.search)
         self.searchbar.bind("<Visibility>", lambda x: self.searchbar.focus())
@@ -55,35 +57,25 @@ class SearchBar(ttk.Frame):
 
         if not execute:
             symbol = event.keysym
-            char = event.char
 
             if symbol == "Escape":
-                self.key_sequence = []
-                CustomersTab.customers = (
-                    CustomerControl().model.session.query(Customer).all()
-                )
+                self.searchbar.delete(0, tk.END)
+                self.sheet.reset()
                 self.sheet.populate_sheet()
                 self.searchbar.delete(0, tk.END)
                 return
 
-            if symbol == "BackSpace":
-                self.key_sequence.pop()
-                if self.search_results is not None and len(self.search_results) == len(
-                    CustomersTab.customers
-                ):
-                    self.search_results = None
-                    self.sheet.populate_sheet()
-            else:
-                self.key_sequence.append(char)
+            self.key_sequence = self.searchbar.get()
 
             self.cancel_id = self.after(
-                50 + len(CustomersTab.customers) // 1000,
+                50 + self.sheet.max_page // 100,
                 lambda: self.search(event, execute=True),
             )
             return
 
-        self.search_results = CustomerControl().search("".join(self.key_sequence))
-        self.sheet.populate_sheet(self.search_results)
+        self.sheet.current_page = 1
+        self.sheet.search_query = self.searchbar.get()
+        self.sheet.populate_sheet()
 
 
 class CustomerSheet(ttk.Treeview, SubscriberInterface):
@@ -96,9 +88,16 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         SubscriberInterface.__init__(self)
+
         self.sidepanel = self.nametowidget(".!sidepanel")
+        self.page_length = config["view_settings"]["page_length"]
         self.current_page = 1
-        self.max_page = len(CustomersTab.customers)
+        self.customers, self.max_page = self.get_customer_page()
+
+        self.search_query = ""
+        self.sorted_by = ""
+        self.descending = False
+
         self.focus_values = []
         self.focus_column_index = 0
         self.search_data = None
@@ -117,34 +116,50 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.page = 0
 
         self.populate_sheet()
+        self.scrollbar = ttk.Scrollbar(
+            self, orient="vertical", command=self.yview, style="Vertical.TScrollbar"
+        )
+        self.scrollbar.pack(side="right", fill="y")
+        self.configure(yscrollcommand=self.scrollbar.set)
+
+    def reset(self):
+        self.current_page = 1
+        self.search_query = ""
+        self.sorted_by = ""
+        self.descending = False
+
+    def get_customer_page(self) -> tuple[list[Customer], int]:
+        return CustomerControl().get_customers(
+            page_length=self.page_length, page_number=self.current_page
+        )
 
     def go_left(self):
         self.current_page = self.pagination.current_page
-        self.populate_sheet(self.search_data)
+        self.populate_sheet()
 
     def go_right(self):
         self.current_page = self.pagination.current_page
-        self.populate_sheet(self.search_data)
-
-    def subscriber_update(self):
-        self.current_page = 1
-        self.max_page = len(CustomersTab.customers)
-        self.pagination.reset()
         self.populate_sheet()
 
-    def populate_sheet(self, search_data: list[Customer] | None = None):
-        page_left_limit = (self.current_page - 1) * 100
-        page_right_limit = (self.current_page) * 100
+    def subscriber_update(self):
+        self.pagination.reset()
+        self.reset()
+        self.current_page = 1
+        self.customers, self.max_page = self.get_customer_page()
+        self.populate_sheet()
 
-        if search_data is None:
-            self.search_data = None
-            data = CustomersTab.customers
-        else:
-            self.search_data = search_data
-            data = search_data
+    def populate_sheet(self):
+
+        self.customers, self.max_page = CustomerControl().get_customers(
+            page_number=self.current_page,
+            page_length=self.page_length,
+            search_query=self.search_query,
+            sorted_by=self.sorted_by,
+            descending=self.descending,
+        )
 
         self.delete(*self.get_children())
-        for customer in data[page_left_limit:page_right_limit]:
+        for customer in self.customers:
             values = customer.values
             values = [value or "" for value in values]
             self.insert("", "end", values=values)
@@ -157,14 +172,9 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
 
     def sort(self, reverse):
         colname = self.column_names[self.focus_column_index]
-        if self.search_data is not None:
-            self.search_data.sort(key=lambda x: x.__dict__[colname], reverse=reverse)
-            self.populate_sheet(self.search_data)
-        else:
-            CustomersTab.customers.sort(
-                key=lambda x: x.__dict__[colname], reverse=reverse
-            )
-            self.populate_sheet()
+        self.sorted_by = colname
+        self.descending = reverse
+        self.populate_sheet()
         self.heading(colname, command=lambda: self.sort(not reverse))
 
     def populate_appointment_view(self, *args):
@@ -282,14 +292,10 @@ class Pagination(ttk.Frame):
         self.max_page = self.sheet.max_page
 
 
-class CustomersTab(AppFrame, SubscriberInterface):
-    customers: list[Customer]
+class CustomersTab(AppFrame):
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        SubscriberInterface.__init__(self)
-        self.customers = CustomerControl().get_customers()
-        CustomersTab.customers = self.customers
 
         self.customer_sheet = CustomerSheet(self)
         self.page_bar = Pagination(self)
@@ -303,6 +309,3 @@ class CustomersTab(AppFrame, SubscriberInterface):
         self.customer_sheet.pack(fill="both", expand=True)
         self.page_bar.pack(fill="x")
         self.management_bar.pack(fill="x")
-
-    def subscriber_update(self):
-        CustomersTab.customers = CustomerControl().get_customers()

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from unicodedata import normalize
-from sqlalchemy import or_
+from math import ceil
+
+from sqlalchemy import func, or_, desc
 
 from .session import session
 from .interfaces import Subscriber
@@ -12,25 +14,29 @@ logger = Logger("customer-model")
 
 
 class CustomerModel:
-    # TODO more functionality, error checking etc
-    customers: list[Customer]
     subscribers: list[Subscriber]
     _instance = None
     session = session
+    max_id: int
 
     def __new__(cls, *args, **kwargs) -> CustomerModel:
         if cls._instance is None:
             cls._instance = super(CustomerModel, cls).__new__(cls, *args, **kwargs)
-            cls.customers = session.query(Customer).all()
             cls.subscribers = []
-            if len(cls.customers) > 0:
-                cls.max_id = max(cls.customers, key=lambda x: x.id).id
-            else:
-                cls.max_id = 0
+            max_id = cls.session.query(func.max(Customer.id)).scalar() or 0
+            if isinstance(max_id, int):
+                cls.max_id = max_id
 
         return cls._instance
 
+    @property
+    def customers(self) -> list[Customer]:
+        return self.session.query(Customer).all()
+
     def sanitize(self, customer: Customer):
+        """
+        Μετατρέπει τα κενά strings σε None
+        """
         for k, v in customer.__dict__.items():
             if k.startswith("_"):
                 continue
@@ -38,6 +44,9 @@ class CustomerModel:
                 customer.__dict__[k] = None
 
     def is_similar(self, customer1: Customer, customer2: Customer) -> bool:
+        """
+        Ελέγχει αν τα σημαντικά στοιχεία 2 πελατών είναι ίδια
+        """
         return all(
             (
                 customer1.name == customer2.name,
@@ -48,9 +57,16 @@ class CustomerModel:
         )
 
     def get_fields(self) -> list[str]:
-        return ["id", "name", "surname", "phone", "email", "appointments"]
+        """
+        Επιστρέφει τους τίτλους των στήλων
+        """
+        return ["id", "name", "surname", "phone", "email"]
 
     def filter_by_all(self, customer: Customer) -> Customer | None:
+        """
+        Ειδική συνάρτηση που ψάχνει έναν πελάτη στην βάση δεδομένων
+        χωρίς την χρήση id
+        """
         return (
             session.query(Customer)
             .filter(
@@ -63,6 +79,9 @@ class CustomerModel:
         )
 
     def normalize(self, customer: Customer):
+        """
+        Μετατροπή name και surname σε μορφή χωρίς κεφαλαία και τόνους
+        """
         customer.normalized_name = (
             normalize("NFKD", customer.name).lower().replace("́", "")
         )
@@ -87,8 +106,8 @@ class CustomerModel:
         # σε None. Αλλιώς θεωρεί ότι το "" είναι πληροφορία και δεν δέχεται
         # δεύτερο πελάτη με κενό τηλέφωνο η email.
         try:
-            self.sanitize(customer)
             self.normalize(customer)
+            self.sanitize(customer)
         except:
             logger.log_warn(f"Failed to create customer")
             return None, False
@@ -118,7 +137,6 @@ class CustomerModel:
             raise Exception(f"DB Error on {customer}")
 
         # Ενημέρωση subscriber
-        self.add_to_cache(new_customer)
         self.notify_subscribers()
         return self.max_id, True
 
@@ -153,12 +171,8 @@ class CustomerModel:
             logger.log_error(f"Failed to delete {customer}")
             raise Exception(f"DB Error on {customer}")
 
-        # Ενημέρωση cache και max_id για ευκολότερη διαχείρηση
-        self.delete_from_cache(customer_to_delete)
-        if len(self.customers) == 0:
-            self.max_id = 0
-        else:
-            self.max_id = max(self.customers, key=lambda x: x.id).id
+        # Ενημέρωση max_id για ευκολότερη διαχείρηση
+        self.max_id = self.find_max_id()
 
         # Ενημέρωση subscriber
         self.notify_subscribers()
@@ -217,7 +231,6 @@ class CustomerModel:
 
         # Ενημερώνει το cache και τους subscribers
         # Σημαντικό να χρησιμοποιηθεί το αποτέλεσμα του νέου query και όχι ο πελάτης της παραμέτρου
-        self.update_in_cache(old_customer)
         self.notify_subscribers()
         return True
 
@@ -230,11 +243,6 @@ class CustomerModel:
     def get_customer_by_phone(self, phone: str) -> Customer | None:
         return session.query(Customer).filter_by(phone=phone).first()
 
-    def get_customers(self) -> list[Customer]:
-        if len(self.customers) == 0:
-            self.customers = session.query(Customer).all()
-        return self.customers
-
     def add_subscriber(self, subscriber: Subscriber) -> None:
         logger.log_info(f"Excecuting subscription of {subscriber}")
         self.subscribers.append(subscriber)
@@ -246,19 +254,15 @@ class CustomerModel:
         for sub in self.subscribers:
             sub.subscriber_update()
 
-    def add_to_cache(self, customer) -> None:
-        self.customers.append(customer)
-
-    def delete_from_cache(self, customer) -> None:
-        self.customers.remove(customer)
-
-    def update_in_cache(self, customer) -> None:
-        for i, cached_customer in enumerate(self.customers):
-            if cached_customer.id == customer.id:
-                self.customers[i] = customer
-                break
-
     def customer_search(self, query: str) -> list[Customer]:
+        """
+        Συνάρτηση αναζήτησης πελάτη. Ψάχνει πελάτες με στοιχεία που
+        εμπεριέχουν τους χαρακτήρες του query, σε σειρά.
+
+        Ο χαρακτήρας % στην sqlite3 είναι wildcard. Δηλαδή εάν το
+        query είναι "νι", τότε η αναζήτηση θα είναι για "νι%" που τεριάζει
+        σε strings όπως νικος, νικη, νικολαος, νικολοπουλος, νιγιαννης κλπ
+        """
         return (
             session.query(Customer)
             .filter(
@@ -273,3 +277,55 @@ class CustomerModel:
             )
             .all()
         )
+
+    def find_max_id(self) -> int:
+        result = self.session.query(func.max(Customer.id)).scalar()
+        if result is None:
+            return 0
+        if not isinstance(result, int):
+            return 0
+        return result
+
+    def get_customers(
+        self,
+        page_number: int = 0,
+        page_length: int = 0,
+        search_query: str = "",
+        sorted_by: str = "",
+        descending: bool = False,
+    ) -> tuple[list[Customer], int]:
+        """
+        Φτιάχνει το query ανάλογα με της ανάγκες του caller. Επιστρέφει
+        ένα tuple με τα αποτελέσματα και το σύνολο σελίδων
+        """
+        query = self.session.query(Customer)
+
+        if search_query:
+            filter = or_(
+                Customer.name.like(f"{search_query}%"),
+                Customer.surname.like(f"{search_query}%"),
+                Customer.normalized_name.like(f"{search_query}%"),
+                Customer.normalized_surname.like(f"{search_query}%"),
+                Customer.email.like(f"{search_query}%"),
+                Customer.phone.like(f"{search_query}%"),
+            )
+            query = query.filter(filter)
+
+        if sorted_by:
+            order_property = Customer.__dict__[sorted_by]
+            if descending:
+                order_property = desc(order_property)
+            query = query.order_by(order_property)
+
+        count = query.count()
+
+        if page_number > 0 and page_length > 0:
+            query = query.limit(page_length)
+            query = query.offset((page_number - 1) * page_length)
+
+        if page_length <= 0:
+            count = 1
+        else:
+            count = ceil(count / page_length)
+
+        return query.all(), count

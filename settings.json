@@ -6,7 +6,8 @@
         "rows": 4,
         "columns": 7,
         "minimum_appointment_duration": 20,
-        "step": 5
+        "step": 5,
+        "page_length": 100
     },
     "color_pallete":
     {

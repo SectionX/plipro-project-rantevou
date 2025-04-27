@@ -56,7 +56,7 @@ class Window(tk.Tk):
         self.config(background=sbackground)
         self.style_config()
         self.title(title)
-        self.tabs = Notebook(self)
+        self.tabs = Notebook(self, width=1050)
         self.side_panel = SidePanel(self, width=250)
         self.search_bar = SearchBar(self)
 
@@ -119,7 +119,20 @@ class Window(tk.Tk):
         style.configure(
             "Treeview.Heading", background=sbackground, foreground=sforeground
         )
-        style.configure("Treeview", background=sbackground, foreground=sforeground)
+        style.configure(
+            "Treeview",
+            background=sbackground,
+            foreground=sforeground,
+            fieldbackground=sbackground,
+        )
+
+        style.configure(
+            "Vertical.TScrollbar",
+            background=sbackground,
+            bordercolor=sbackground,
+            troughcolor=sfieldbackground,
+            arrowcolor="white",
+        )
 
         # appointment grid
         style.configure(

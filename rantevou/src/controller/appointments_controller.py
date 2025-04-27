@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import NamedTuple
+
+from . import get_config
 from .logging import Logger
-from ..model.types import Appointment, AppointmentModel, Customer, CustomerModel
+from ..model.entities import Appointment, Customer
+from ..model.appointment import AppointmentModel
 from .customers_controller import CustomerControl
 
 # TODO: Ιδανικά για κάθε συνάρτηση θέλουμε και διαγνωστικά logs
@@ -12,6 +15,9 @@ from .customers_controller import CustomerControl
 
 # Ουσιαστικά οι περισσότερες συναρτήσεις απλά καλούν το αποτέλεσμα από το model.
 # Το όλο θέμα είναι να μπουν logs και error checking σε κάθε συνάρτηση
+
+cfg = get_config()["view_settings"]
+PERIOD = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 
 logger = Logger("appointments_controller")
 
@@ -165,5 +171,5 @@ class AppointmentControl:
         logger.log_debug(f"Requesting query of appointments from {start} to {end}")
         return self.model.get_appointments_from_to_date(start, end)
 
-    def get_appointments_by_period(self, date) -> list[Appointment]:
-        return self.model.get_appointments_by_period(date)
+    def get_appointments_by_period(self, date: datetime) -> list[Appointment]:
+        return self.model.get_appointments_from_to_date(date, date + PERIOD)
