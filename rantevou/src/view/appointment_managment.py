@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from .sidepanel import SidePanel
 from .entries import AppointmentEntry, CustomerEntry
 from .abstract_views import SideView, EntryWithPlaceholder
-from ..model.types import Appointment, Customer
+from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
@@ -42,9 +42,7 @@ class EditAppointmentView(SideView):
 
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
         self.save_button.pack()
-        self.delete_button = ttk.Button(
-            self.main_frame, text="Delete", command=self.delete
-        )
+        self.delete_button = ttk.Button(self.main_frame, text="Delete", command=self.delete)
         self.delete_button.pack()
 
     def update_content(self, caller, caller_data):
@@ -76,9 +74,7 @@ class EditAppointmentView(SideView):
     def save(self):
         self.appointment = self.appointment_entry.get()
         self.customer = self.customer_entry.get()
-        result = AppointmentControl().update_appointment(
-            self.appointment, self.customer
-        )
+        result = AppointmentControl().update_appointment(self.appointment, self.customer)
         if result is True:
             self.sidepanel.go_back()
         else:

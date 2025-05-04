@@ -8,7 +8,7 @@ from typing import Literal, Iterable
 
 from .sidepanel import SideView, SidePanel
 
-from ..model.types import Appointment, Customer
+from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
@@ -99,9 +99,7 @@ class AlertRow(ttk.Frame):
     def send_email(self):
         if self.appointment:
             if self.customer and self.customer.email:
-                mailer.send_email(
-                    [self.appointment], debug=True
-                )  # TODO change for live
+                mailer.send_email([self.appointment], debug=True)  # TODO change for live
             else:
                 showerror("Customer doesn't have an email")
 

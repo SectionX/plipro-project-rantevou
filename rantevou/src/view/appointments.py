@@ -16,7 +16,7 @@ from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller import get_config, SubscriberInterface
 
-from ..model.types import Appointment
+from ..model.entities import Appointment
 
 logger = Logger("AppointmentsTab")
 cfg: dict[str, Any] = get_config()["view_settings"]
@@ -69,12 +69,8 @@ class GridNavBar(ttk.Frame):
 
     def __init__(self, root: Grid, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.move_left = ttk.Button(
-            self, text="Previous", command=root.move_left, style="low.TButton"
-        )
-        self.move_right = ttk.Button(
-            self, text="Next", command=root.move_right, style="low.TButton"
-        )
+        self.move_left = ttk.Button(self, text="Previous", command=root.move_left, style="low.TButton")
+        self.move_right = ttk.Button(self, text="Next", command=root.move_right, style="low.TButton")
         self.move_right.pack(side=tk.RIGHT)
         self.move_left.pack(side=tk.RIGHT)
 
@@ -93,17 +89,13 @@ class Grid(ttk.Frame):
         self.navbar = GridNavBar(self, *args, **kwargs)
         self.navbar.pack(fill="x")
 
-        self.rowheader = GridVerticalHeader(
-            self, start_date, self.period_duration, cfg["rows"]
-        )
+        self.rowheader = GridVerticalHeader(self, start_date, self.period_duration, cfg["rows"])
         self.rowheader.pack(side=tk.LEFT, fill="both")
 
         for i in range(7):
             start_date = self.start_date + timedelta(days=i)
             end_date = start_date + timedelta(hours=cfg["working_hours"])
-            start_index = AppointmentControl().get_index_from_date(
-                start_date, self.start_date, self.period_duration
-            )
+            start_index = AppointmentControl().get_index_from_date(start_date, self.start_date, self.period_duration)
             self.columns.append(
                 GridColumn(
                     self,
@@ -149,9 +141,7 @@ class GridVerticalHeader(ttk.Label):
     interval: timedelta
     rows: int
 
-    def __init__(
-        self, master, start: datetime, interval: timedelta, rows: int, *args, **kwargs
-    ):
+    def __init__(self, master, start: datetime, interval: timedelta, rows: int, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.start = start
         self.interval = interval
@@ -257,17 +247,13 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def previous_period_appointments(self):
-        appointments = AppointmentControl().get_appointments_by_period(
-            self.period_start - timedelta(hours=2)
-        )
+        appointments = AppointmentControl().get_appointments_by_period(self.period_start - timedelta(hours=2))
         appointments.sort(key=lambda x: x.date)
         return appointments
 
     @property
     def next_period_appointments(self):
-        appointments = AppointmentControl().get_appointments_by_period(
-            self.period_end + timedelta(hours=2)
-        )
+        appointments = AppointmentControl().get_appointments_by_period(self.period_end + timedelta(hours=2))
         appointments.sort(key=lambda x: x.date)
         return appointments
 
@@ -362,14 +348,10 @@ class GridCell(ttk.Frame, SubscriberInterface):
         next_appointments = self.next_period_appointments
 
         if len(previous_appointments) == 0:
-            previous_appointments = [
-                Appointment(date=self.period_start, duration=timedelta(0))
-            ]
+            previous_appointments = [Appointment(date=self.period_start, duration=timedelta(0))]
 
         if len(next_appointments) == 0:
-            next_appointments = [
-                Appointment(date=self.period_end, duration=timedelta(0))
-            ]
+            next_appointments = [Appointment(date=self.period_end, duration=timedelta(0))]
 
         # Ενώνει όλα τα ραντεβού σε μια διπλή λίστα για πιο γρήγορα operations
         appointments: deque[Appointment] = deque(

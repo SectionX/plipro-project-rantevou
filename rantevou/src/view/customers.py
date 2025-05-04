@@ -1,5 +1,5 @@
 from __future__ import annotations
-from unicodedata import normalize
+
 
 import tkinter as tk
 from tkinter import ttk
@@ -7,7 +7,7 @@ from tkinter.messagebox import askyesno
 from typing import Any, Literal, Protocol, runtime_checkable
 from .abstract_views import AppFrame
 from .sidepanel import SidePanel
-from ..model.types import Customer
+from ..model.entities import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller import SubscriberInterface
@@ -15,24 +15,12 @@ from ..controller import get_config
 
 config = get_config()
 
-
-##profiling
-from time import perf_counter
-
 logger = Logger("customers-view")
 
 
 @runtime_checkable
 class PopulateFromCustomer(Protocol):
     def populate_from_customer_tab(self, customer_data: Any | None): ...
-
-
-def check_values(values, keysequence):
-    for value in values:
-        value = normalize("NFKD", str(value)).lower().replace("́", "")
-        if value.startswith(keysequence):
-            return True
-    return False
 
 
 class SearchBar(ttk.Frame):
@@ -107,18 +95,14 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.bind("<Double-Button-1>", self.populate_appointment_view)
 
         for i, name in enumerate(self.column_names):
-            self.heading(
-                name, text=name.title(), command=lambda: self.sort(reverse=False)
-            )
+            self.heading(name, text=name.title(), command=lambda: self.sort(reverse=False))
         self.column("#0", width=0, stretch=tk.NO)
         self.column("id", width=0, stretch=tk.NO)
 
         self.page = 0
 
         self.populate_sheet()
-        self.scrollbar = ttk.Scrollbar(
-            self, orient="vertical", command=self.yview, style="Vertical.TScrollbar"
-        )
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.yview, style="Vertical.TScrollbar")
         self.scrollbar.pack(side="right", fill="y")
         self.configure(yscrollcommand=self.scrollbar.set)
 
@@ -129,9 +113,7 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.descending = False
 
     def get_customer_page(self) -> tuple[list[Customer], int]:
-        return CustomerControl().get_customers(
-            page_length=self.page_length, page_number=self.current_page
-        )
+        return CustomerControl().get_customers(page_length=self.page_length, page_number=self.current_page)
 
     def go_left(self):
         self.current_page = self.pagination.current_page
@@ -198,15 +180,9 @@ class ManagementBar(ttk.Frame):
         self.sidepanel = self.nametowidget(".!sidepanel")
         self.sheet = sheet
         self.button_frame = ttk.Frame(self)
-        self.add_button = ttk.Button(
-            self.button_frame, text="Add", command=self.add_customer
-        )
-        self.edit_button = ttk.Button(
-            self.button_frame, text="Edit", command=self.edit_customer
-        )
-        self.del_button = ttk.Button(
-            self.button_frame, text="Delete", command=self.del_customer
-        )
+        self.add_button = ttk.Button(self.button_frame, text="Add", command=self.add_customer)
+        self.edit_button = ttk.Button(self.button_frame, text="Edit", command=self.edit_customer)
+        self.del_button = ttk.Button(self.button_frame, text="Delete", command=self.del_customer)
 
         self.button_frame.pack()
         self.add_button.pack(side=tk.LEFT)
@@ -217,9 +193,7 @@ class ManagementBar(ttk.Frame):
         self.sidepanel.select_view("addc", caller=self, caller_data=None)
 
     def edit_customer(self):
-        self.sidepanel.select_view(
-            "editc", caller=self, caller_data=self.sheet.focus_values
-        )
+        self.sidepanel.select_view("editc", caller=self, caller_data=self.sheet.focus_values)
 
     def del_customer(self):
         id = int(self.sheet.focus_values[0])

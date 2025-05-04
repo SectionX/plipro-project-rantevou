@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy import ForeignKey
 
-from .session import Base
+
+class Base(DeclarativeBase): ...
 
 
 class Appointment(Base):
@@ -26,9 +27,7 @@ class Appointment(Base):
     date: Mapped[datetime] = mapped_column(nullable=False, unique=True, index=True)
     is_alerted: Mapped[bool] = mapped_column(default=False)
     duration: Mapped[timedelta] = mapped_column(default=timedelta(minutes=20))
-    customer_id: Mapped[int | None] = mapped_column(
-        ForeignKey("customer.id"), nullable=True
-    )
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customer.id"), nullable=True)
     employee_id: Mapped[int] = mapped_column(default=0)
 
     customer = relationship(
@@ -86,15 +85,31 @@ class Appointment(Base):
         """
         return abs(self.date - date)
 
-    def to_dict(self):
+    def to_dict_api(self):
         """
         Μετατροπή του τύπου Appointment σε τύπο dict
         """
-        dict_: dict[str, Any] = {}
-        dict_.update(self.__dict__)
-        for k in dict_.keys():
-            if k.startswith("_"):
-                dict_.pop(k)
+        dict_: dict[str, int | str | float | datetime | None] = {}
+        dict_["id"] = self.id
+        dict_["date"] = self.date.strftime("%d/%m/%Y, %H:%M:%S")
+        dict_["duration"] = self.duration.total_seconds() // 60
+        dict_["end_date"] = self.end_date.strftime("%d/%m/%Y, %H:%M:%S")
+        dict_["customer_id"] = self.customer_id
+        dict_["employee_id"] = self.employee_id
+        return dict_
+
+    def to_dict_native(self):
+        """
+        Μετατροπή του τύπου Appointment σε τύπο dict
+        """
+        dict_: dict[str, int | str | float | datetime | timedelta | None] = {}
+        dict_["id"] = self.id
+        dict_["date"] = self.date
+        dict_["duration"] = self.duration
+        dict_["end_date"] = self.end_date
+        dict_["customer_id"] = self.customer_id
+        dict_["employee_id"] = self.employee_id
+        return dict_
 
 
 class Customer(Base):
@@ -157,3 +172,12 @@ class Customer(Base):
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def to_dict_api(self) -> dict[str, str]:
+        dict_ = {
+            "name": self.name,
+            "surname": self.surname,
+            "phone": self.phone,
+            "email": self.email,
+        }
+        return dict_

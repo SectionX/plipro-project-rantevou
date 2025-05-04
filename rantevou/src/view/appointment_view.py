@@ -10,7 +10,7 @@ from .sidepanel import SidePanel
 from .abstract_views import EntryWithPlaceholder
 from . import abstract_views
 
-from ..model.types import Appointment, Customer
+from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
@@ -88,9 +88,7 @@ class AppointmentView(abstract_views.SideView):
         super().__init__(master, *args, **kwargs)
         self.name = self.__class__.name
         self.sidepanel = master
-        self.main_frame = ttk.Frame(
-            self, style="primary.TFrame", borderwidth=3, relief="sunken"
-        )
+        self.main_frame = ttk.Frame(self, style="primary.TFrame", borderwidth=3, relief="sunken")
         self.set_title("Ραντεβού")
         self.main_frame.pack(fill="both", expand=True)
         self.back_btn.config(command=master.go_back)

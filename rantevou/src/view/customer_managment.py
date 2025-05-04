@@ -7,7 +7,7 @@ from tkinter.messagebox import showerror
 from .sidepanel import SidePanel
 from .abstract_views import SideView
 
-from ..model.types import Customer
+from ..model.entities import Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger

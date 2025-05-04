@@ -58,6 +58,7 @@ import pathlib
 import shutil
 import zipfile
 import re
+import sys
 from typing import Literal
 
 
@@ -115,7 +116,7 @@ class Logger:
         self.write_to_file(message)
 
         if self.level <= self.levels.index(severity):
-            print(message)
+            print(message, file=sys.stderr)
 
     def log_debug(self, message: str):
         self.log(message, "DEBUG")

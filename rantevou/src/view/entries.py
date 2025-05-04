@@ -2,7 +2,7 @@ from typing import Sequence
 from datetime import datetime, timedelta
 from tkinter import ttk
 import tkinter as tk
-from ..model.types import Appointment, Customer
+from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.exceptions import *
