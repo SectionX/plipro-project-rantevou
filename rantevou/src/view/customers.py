@@ -20,10 +20,36 @@ logger = Logger("customers-view")
 
 @runtime_checkable
 class PopulateFromCustomer(Protocol):
+    """
+    Διεπαφή για τα widgets που εισάγουν αυτόματα (διπλό κλικ) στοιχεία πελατών
+    στις φόρμες ραντεβού.
+    """
+
     def populate_from_customer_tab(self, customer_data: Any | None): ...
 
 
 class SearchBar(ttk.Frame):
+    """
+    Αναζήτηση πελατών. Η λογική του αλγορίθμου είναι ότι ψάχνει όλα τα πεδία
+    που αρχίζουν από την συμβολοσειρά που πληκτρολογεί ο χρήστης.
+
+    Έχουν γίνει πολλές βελτιστοποιήσεις.
+    * Αναζήτηση κατα την πληκτρολόγηση με βελτιστοποιήσεις που μειώνουν τον φόρτο
+    και το κλείδωμα της γραφικής επιφάνειας χωρίς χρήση threading.
+
+    * Collation: Αν και η sqlite έχει θέματα με unicode, η υποστηρίζει πλήρη
+    case insensitive και accent insensitive αναζήτηση.
+
+    * Delay που μεγαλώνει με βάση το πλήθος των πελατών στην βάση δεδομένων, ώστε
+    να γίνονται λιγότερες αναζητήσεις κατα την πληκτρολόγηση.
+
+    * Pagination που μειώνει δραστικά τους χρόνους rendering και τις ανάγκες μνήμης,
+    υλοποιημένο απευθείας στο μοντέλο με μέθοδο "query composition". Δηλαδή το
+    query φτιάχνεται δυναμικά ανάλογα με τις ανάγκες της καλούσας.
+
+    * Ελεγμένο για 300,000 πελάτες.
+    """
+
     searchbar: ttk.Entry
     customers: list[Customer]
     sheet: CustomerSheet
@@ -39,14 +65,17 @@ class SearchBar(ttk.Frame):
         self.cancel_id: str | None = None
 
     def search(self, event: tk.Event, execute=False):
+        """
+        Εφαρμόζει ένα loop με χρήση της .after που περιμένει για μερικά millisec
+        πριν στείλει το query στην βάση δεδομένων. To delay αυξάνεται δυναμικά
+        με βάση το πλήθος των εγγεγραμένων πελατών.
+        """
         if self.cancel_id and not execute:
             self.after_cancel(self.cancel_id)
             self.cancel_id = None
 
         if not execute:
-            symbol = event.keysym
-
-            if symbol == "Escape":
+            if event.keysym == "Escape":
                 self.searchbar.delete(0, tk.END)
                 self.sheet.reset()
                 self.sheet.populate_sheet()
@@ -67,6 +96,13 @@ class SearchBar(ttk.Frame):
 
 
 class CustomerSheet(ttk.Treeview, SubscriberInterface):
+    """
+    Εμφάνιση των πελατών σε μορφή τύπου worksheet. Υποστηρίζει λειτουργία
+    αυτόματης συμπλήρωσης φόρμας ραντεβού με στοιχεία πελάτη. Έχει γίνει
+    σελιδοποίηση στις 100 εγγραφές ανα σελίδα επειδή το rendering είναι
+    σχετικά αργό.
+    """
+
     column_names: list[str]
     focus_values: list[Any] | Literal[""]
     focus_column_index: int
@@ -113,6 +149,9 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.descending = False
 
     def get_customer_page(self) -> tuple[list[Customer], int]:
+        """
+        Βοηθητική συνάρτηση αρχικοποίησης.
+        """
         return CustomerControl().get_customers(page_length=self.page_length, page_number=self.current_page)
 
     def go_left(self):
@@ -124,6 +163,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.populate_sheet()
 
     def subscriber_update(self):
+        """
+        Εφαρμογή του subscriber pattern. Καλείται από το μοντελο όταν γίνεται
+        μια σημαντική αλλαγή στα δεδομένα.
+        """
         self.pagination.reset()
         self.reset()
         self.current_page = 1
@@ -131,7 +174,18 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.populate_sheet()
 
     def populate_sheet(self):
+        """
+        Η κεντρική συνάρτηση του customer tab. Ορίζει την δημιουργία του query
+        στην βάση δεδομένων βάση του πως αλλάζουν την κατάσταση της τα υπόλοιπα
+        widget.
 
+        Προτιμήθηκε να σβήνει και να ξαναγράφει τα κελιά από το να γράφει πάνω
+        στα υπάρχοντα επειδή θα γίνει ιδιαίτερα πολύπλοκη η λογική με τόσα κινητά
+        μέρη.
+
+        Εφόσον είναι περιορισμένη στις 100 εγγραφές ανα σελίδα είναι αρκετά
+        αποδοτική.
+        """
         self.customers, self.max_page = CustomerControl().get_customers(
             page_number=self.current_page,
             page_length=self.page_length,
@@ -147,12 +201,20 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
             self.insert("", "end", values=values)
 
     def get_focus_values(self, event: tk.Event):
+        """
+        Βοηθητική συνάρτηση που καταγράφει το τελευταίο κελί που πατήθηκε
+        ανα πάσα στιγμή ώστε να απλοποιηθούν οι αλγόριθμοι στα υπόλοιπα στοιχεία
+        """
         row = self.identify_row(event.y)
         column = self.identify_column(event.x)
         self.focus_values = self.item(row)["values"]
         self.focus_column_index = int(column[1:]) - 1
 
     def sort(self, reverse):
+        """
+        Sort με βάση την στήλη. Υποστηρίζει αύξουσα και φθήνουσα ταξινόμηση
+        και ενεργοποιείται στο πάτημα του column header.
+        """
         colname = self.column_names[self.focus_column_index]
         self.sorted_by = colname
         self.descending = reverse
@@ -160,6 +222,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.heading(colname, command=lambda: self.sort(not reverse))
 
     def populate_appointment_view(self, *args):
+        """
+        Συνάρτηση διεπαφής που γράφει αυτόματα τα στοιχεία του πελάτη
+        στις φόρμες εισαγωγής/επεξεργασίας
+        """
         side_view = self.sidepanel.active_view
         if isinstance(side_view, PopulateFromCustomer):
             try:
@@ -169,6 +235,10 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
 
 
 class ManagementBar(ttk.Frame):
+    """
+    Φέρει τα κουμπιά εισαγωγής και επεξεργασίας πελατών.
+    """
+
     add_button: ttk.Button
     edit_button: ttk.Button
     del_button: ttk.Button
@@ -210,6 +280,10 @@ class ManagementBar(ttk.Frame):
 
 
 class Pagination(ttk.Frame):
+    """
+    Φέρει τα κουμπιά αλλαγής σελίδας και την απαραίτητη λογική.
+    """
+
     sheet: CustomerSheet
 
     def __init__(self, master, *args, **kwargs):
@@ -241,6 +315,10 @@ class Pagination(ttk.Frame):
         self.right_button.pack(side=tk.LEFT)
 
     def set_sheet(self, sheet: CustomerSheet):
+        """
+        Συνάρτηση αρχικοποίησης λόγω import conflict. Καλείται από το
+        CustomersTab.
+        """
         self.sheet = sheet
 
     def go_left(self):
@@ -267,6 +345,10 @@ class Pagination(ttk.Frame):
 
 
 class CustomersTab(AppFrame):
+    """
+    Το κεντρικό widget που αρχικοποιεί και εμφανίζει όλα τα στοιχεία
+    του customer tab.
+    """
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)

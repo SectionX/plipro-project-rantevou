@@ -20,9 +20,7 @@ class AppointmentCache:
         self.id_index: dict[int, int] = {}
         self.start: int
         self.end: int
-        self.now = datetime.now().replace(
-            hour=9, minute=0, second=0, microsecond=0
-        )  # TODO Config setting
+        self.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)  # TODO Config setting
         self.min_index: int
         self.max_index: int
         self.model = model
@@ -64,6 +62,7 @@ class AppointmentCache:
         if values is None:
             self.query_by_date(self.unhash(date_index), self.unhash(date_index + 1))
             return self.lookup(date_index)
+        values.sort(key=lambda x: x.date)
         return values
 
     def lookup_date(self, date: datetime) -> list[Appointment]:
@@ -87,9 +86,7 @@ class AppointmentCache:
     def unhash(self, index: int) -> datetime:
         return self.now + index * PERIOD
 
-    def iter_date_range(
-        self, start: datetime, end: datetime | None
-    ) -> Generator[Appointment, None, None]:
+    def iter_date_range(self, start: datetime, end: datetime | None) -> Generator[Appointment, None, None]:
         if end is None:
             end = start
         self.start = self.hash(start)

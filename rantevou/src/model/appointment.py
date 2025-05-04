@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from sqlalchemy import func
+from sqlalchemy.exc import DatabaseError
 
 from .session import session
 from .entities import Appointment
@@ -18,10 +19,21 @@ from .caching import AppointmentCache
 from .interfaces import Subscriber
 
 from ..controller.logging import Logger
+from ..controller import get_config
+from .exceptions import (
+    DateOverlap,
+    AppointmentDBError,
+    SynchronizationDBError,
+    IdMissing,
+    IdNotFoundInDB,
+)
 
+cfg = get_config()
+_working_hours = int(cfg["view_settings"]["working_hours"])
+_rows = int(cfg["view_settings"]["rows"])
+PERIOD = timedelta(minutes=_working_hours // _rows)
 
-logger = Logger("appointment-model")
-PERIOD = timedelta(hours=2)
+logger = Logger("Appointment-Model")
 
 
 class AppointmentModel:
@@ -43,6 +55,8 @@ class AppointmentModel:
         δεν υπάρχει ήδη.
         """
         if cls._instance is None:
+            logger.log_info("Initializing Appointment Model")
+
             cls._instance = super(AppointmentModel, cls).__new__(cls, *args, **kwargs)
             cls.max_id = session.query(func.max(Appointment.id)).scalar()
             if cls.max_id is None:
@@ -51,14 +65,12 @@ class AppointmentModel:
             cls.cache = AppointmentCache(cls._instance)
 
             cls.now = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-            cls.min_date = cls.now - timedelta(days=10)
-            cls.max_date = cls.now + timedelta(days=10)
+            cls.min_date = cls.now - timedelta(days=9, hours=23)
+            cls.max_date = cls.now + timedelta(days=9, hours=23)
 
             appointments = (
                 session.query(Appointment)
-                .filter(
-                    Appointment.date >= cls.min_date, Appointment.date <= cls.max_date
-                )
+                .filter(Appointment.date >= cls.min_date, Appointment.date <= cls.max_date)
                 .order_by(Appointment.date)
                 .all()
             )
@@ -73,46 +85,34 @@ class AppointmentModel:
         """
         Ελέγχει εάν η ημερομηνία ενός ραντεβού συμπίπτει με ήδη υπάρχοντα
         """
-        for existing_appointment in self.cache.iter_date_range(
-            appointment.date, appointment.end_date
-        ):
+        for existing_appointment in self.cache.iter_date_range(appointment.date, appointment.end_date):
             if existing_appointment.overlap(appointment):
                 return True
         return False
 
-    def add_appointment(self, appointment: Appointment) -> int | None:
+    def add_appointment(self, appointment: Appointment) -> int:
         """
         Προσθήκη νέου ραντεβού στην βάση δεδομένων και ενημέρωση του cache
         """
-        logger.log_info(f"Excecuting creation of new {appointment=}")
-
-        # TODO Έλεγχος για overlap στις ημερομηνίες. Πρέπει η καινούρια
-        # ημερομηνία και η διάρκεια να μην είναι μεταξύ date, end_date
+        logger.log_info(f"Excecuting creation of {appointment}")
 
         if self.has_overlap(appointment):
-            logger.log_warn(f"{appointment} overlaps with existing")
-            return None
+            raise DateOverlap(appointment)
 
         # Προσθήκη στην βάση δεδομένων
         try:
             self.session.add(appointment)
             self.session.commit()
             self.max_id += 1
-            logger.log_info(f"Assigned id={self.max_id}")
-        except Exception as e:
-            logger.log_error(str(e))
+            logger.log_debug(f"Assigned id={self.max_id}")
+        except DatabaseError as e:
             self.session.rollback()
-            return None
+            raise AppointmentDBError(appointment, e)
 
         # Έλεγχος ορθής λειτουργίας
-        appointment_with_id = (
-            self.session.query(Appointment)
-            .filter(Appointment.id == self.max_id)
-            .first()
-        )
+        appointment_with_id = self.session.query(Appointment).filter(Appointment.id == self.max_id).first()
         if appointment_with_id is None:
-            logger.log_error("Failed to retrieve appointment id after insertion")
-            raise Exception(f"DB Failure on inserting {appointment}")
+            raise SynchronizationDBError(appointment)
 
         # Ενημέρωση του cache
         if appointment_with_id:
@@ -137,48 +137,40 @@ class AppointmentModel:
             )
         )
 
-    def update_appointment(
-        self, appointment: Appointment, customer_id: int | None = None
-    ) -> bool:
+    def update_appointment(self, appointment: Appointment, customer_id: int | None = None) -> bool:
         """
         Ενημέρωση στοιχείων ραντεβού στην βάση δεδομένων και ενημέρωση cache
         Επιβάλλει να υπάρχει id στο ραντεβού προς ενημέρωση
-
-        Επιστρέφει boolean επιτυχίας
         """
         logger.log_info(f"Excecuting update of {appointment}")
 
+        # Έλεγχος περιπτώσεων σφάλματος
         if self.has_overlap(appointment):
-            logger.log_warn(f"{appointment} overlaps with existing")
-            return False
+            raise DateOverlap(appointment)
 
         if appointment.id is None:
-            logger.log_warn("Appointment must have an id")
-            return False
+            raise IdMissing(appointment)
 
-        old_appointment = (
-            session.query(Appointment).filter_by(id=appointment.id).first()
-        )
+        old_appointment = session.query(Appointment).filter_by(id=appointment.id).first()
 
         if old_appointment is None:
-            logger.log_warn("Appointment was not found in database")
-            return False
+            raise IdNotFoundInDB(appointment)
 
+        # Ενημέρωση του ραντεβού
         if isinstance(customer_id, int):
-            logger.log_info(f"Adding {customer_id=} to {appointment.id=}")
+            logger.log_debug(f"Adding {customer_id=} to {appointment.id=}")
             old_appointment.customer_id = customer_id
 
         old_appointment.date = appointment.date
         old_appointment.duration = appointment.duration
         old_appointment.is_alerted = appointment.is_alerted
-        logger.log_debug(f"{old_appointment=}")
-        # Ενημέρωση του στοιχείου
+
+        # Εγγραφή στην βάση δεδομένων
         try:
             self.session.commit()
-        except Exception as e:
-            logger.log_error(str(e))
+        except DatabaseError as e:
             self.session.rollback()
-            return False
+            raise AppointmentDBError(appointment, e)
 
         # Ενημέρωση του cache
         self.cache.update(old_appointment)
@@ -193,28 +185,25 @@ class AppointmentModel:
         Ενημερώνει το τρέχων μέγιστο id για πιο γρήγορη προσθήκη νέων ραντεβού.
         Επιβάλλει στο ραντεβού προς διαγραφή να έχει id.
         """
-        logger.log_info(f"Excecuting deletion of {appointment=}")
+        logger.log_info(f"Excecuting deletion of {appointment}")
 
         # Έλεγχος αν το ραντεβού έχει id
         if appointment.id is None:
-            logger.log_error("Appointment for deletion must have an id")
-            return False
+            raise IdMissing(appointment)
 
         # Εύρεση του ραντεβού στην βάση δεδομένων για επιβεβαίωση του id και
         # σύνδεση με την sqlalchemy
         appointment_to_delete = self.get_appointment_by_id(appointment.id)
         if appointment_to_delete is None:
-            logger.log_error("Failed to locate appointment in db")
-            return False
+            raise IdNotFoundInDB(appointment)
 
         # Διαγραφή του στοιχείου από την βάση δεδομένων
         try:
             self.session.delete(appointment_to_delete)
             self.session.commit()
-        except Exception as e:
-            logger.log_error(str(e))
+        except DatabaseError as e:
             self.session.rollback()
-            return False
+            raise AppointmentDBError(appointment, e)
 
         # Ενημέρωση του cache
         self.cache.delete(appointment_to_delete)
@@ -226,10 +215,9 @@ class AppointmentModel:
 
     def get_appointments(self) -> dict[int, list[Appointment]]:
         """
-        Επιστρέφει όλα τα ραντεβού που έχουν αποθηκευτεί στο cache κατα
-        την αρχικοποίηση και αργότερα με τις ενέργειες του χρήστη.
+        Επιστρέφει όλα τα ραντεβού που είναι αποθηκευμένα στο cache
         """
-        logger.log_debug(f"Excecuting query of all appointments")
+        logger.log_debug(f"Excecuting query of cached appointments")
         return self.cache.data
 
     def get_appointment_by_id(self, appointment_id: int) -> Appointment | None:
@@ -246,17 +234,12 @@ class AppointmentModel:
         logger.log_debug(f"Excecuting query of appointment by {date=}")
         return self.session.query(Appointment).filter_by(date=date).first()
 
-    def get_appointments_from_to_date(
-        self, from_date: datetime, to_date: datetime
-    ) -> list[Appointment]:
+    def get_appointments_from_to_date(self, from_date: datetime, to_date: datetime) -> list[Appointment]:
         """
         Συνάρτηση συνήθους περίπτωσης
         """
-        result = (
-            self.session.query(Appointment)
-            .filter(Appointment.date >= from_date, Appointment.date < to_date)
-            .all()
-        )
+        logger.log_debug(f"Excecuting query of appointment from {str(from_date)} to {str(to_date)}")
+        result = self.session.query(Appointment).filter(Appointment.date >= from_date, Appointment.date < to_date).all()
 
         return result
 
@@ -265,6 +248,7 @@ class AppointmentModel:
         Ειδικευμένη συνάρτηση που επιστρέφει όλα τα ραντεβού εντός
         της περιόδου που ανήκει η ημερομηνία date
         """
+        logger.log_debug(f"Executing query of appointment by period assosiated with {str(date)}")
         return [*self.cache.iter_date_range(date, date)]
 
     def get_time_between_appointments(
@@ -308,26 +292,30 @@ class AppointmentModel:
         """
         Δήλωση των subscribers στην λίστα προς ενημέρωση
         """
+
         # Έλεγχος εάν το αντικείμενο υλοποιεί την κατάλληλη διεπαφή
         if not hasattr(subscriber, "subscriber_update"):
             logger.log_error("Object is not a subscriber")
             raise Exception("Subscribers must implement the subscriber interface")
 
-        logger.log_info(f"Adding {subscriber=}")
+        logger.log_debug(f"Adding {subscriber=}")
         self.subscribers.append(subscriber)
 
     def update_subscribers(self):
         """
         Ενημέρωση των δηλωμένων subscribers
         """
-        logger.log_info(
-            f"Excecuting notification of {len(self.subscribers)} subscribers"
-        )
+        logger.log_info(f"Excecuting notification of {len(self.subscribers)} subscribers")
         for subscriber in self.subscribers:
             logger.log_debug(str(subscriber))
             subscriber.subscriber_update()
 
     def find_max_id(self) -> int:
+        """
+        Ψάχνει το μέγιστο id στο Appointment table για λόγους συγχρονισμού
+        με το cache
+        """
+        logger.log_debug("Executing recalculation of maximum id")
         result = self.session.query(func.max(Appointment.id)).scalar()
         if result is None:
             return 0

@@ -1,7 +1,6 @@
 """
-Ορίζει το κεντρικό παράθυρο της εφαρμογής πάνω στο οποίο υπάρχουν όλα
-τα σχετικά frames της εφαρμογής (με frame εννοούμε τα παράθυρα που αφορούν
-την κάθε ξεχωριστή λειτουργία της εφαρμογής)
+Ορίζει το κεντρικό (top level) παράθυρο της εφαρμογής πάνω στο οποίο υπάρχουν όλα
+τα σχετικά widgets της εφαρμογής.
 """
 
 from __future__ import annotations
@@ -39,42 +38,45 @@ pfieldbackground = color2
 
 
 class Notebook(ttk.Notebook):
+    """
+    Ένα state object στην περίπτωση που χρειαστεί στο μέλλον
+    """
+
     data: dict[str, Any] = {}
 
 
 def create_window() -> Window:
+    """
+    Window factory για να μην μπλέκονται τα imports με τις αρχικοποιήσεις
+    """
     return Window()
 
 
 class Window(tk.Tk):
+    """
+    To top level παράθυρο. Αποτελείται από το main panel με tabs, το sidepanel που δείχνει διαχειριστικές
+    ενέργειες και λεπτομερείς πληροφορίες, και το search bar που ψάχνει για κενά ραντεβού.
+    """
 
-    def __init__(
-        self, title: str = "Appointments App", width: int = 1400, height: int = 600
-    ):
+    def __init__(self, title: str = "Appointments App", width: int = 1400, height: int = 600):
         super().__init__()
+
+        # Βασικές αρχικοποιήσεις
         self.geometry(f"{width}x{height}")
         self.config(background=sbackground)
         self.style_config()
         self.title(title)
-        self.tabs = Notebook(self, width=1050)
-        self.side_panel = SidePanel(self, width=250)
+
+        # Αρχικοποιήσεις των κεντρικών widget
+        self.tabs = Notebook(self)
+        self.side_panel = SidePanel(self)
         self.search_bar = SearchBar(self)
 
         self.tabs.add(AppointmentsTab(self.tabs), text="Appointments")
         self.tabs.add(CustomersTab(self.tabs), text="Customers")
         self.tabs.add(Statistics(self.tabs), text="Statistics")
 
-        # Κάνει τα F-keys να αλλάζουν το tab. Πρόχειρη υλοποίηση. Μπορεί να βελτιωθεί
-        # δραστικά.
-        self.bind_all(
-            "<Key>",
-            lambda x: (
-                self.tabs.select(int(x.keysym[1:]) - 1)
-                if x.keysym.startswith("F")
-                else None
-            ),
-        )
-
+        # Η register_view είναι παρόμοια της .add με λίγη έξτρα λογική.
         self.side_panel.register_view(AlertsView(self.side_panel), "alerts")
         self.side_panel.register_view(EditAppointmentView(self.side_panel), "edit")
         self.side_panel.register_view(AppointmentView(self.side_panel), "appointments")
@@ -85,22 +87,44 @@ class Window(tk.Tk):
         # TODO εδώ προσθέτουμε το καινούριο CustomerView, προτινεται το όνομα "customer"
         self.side_panel.select_view("alerts")
 
-        self.grid_rowconfigure(0, weight=4)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=2, minsize=250)
+        # Δήλωση διαστάσεων και τοποθέτηση των widget
+        for i in range(2):
+            self.rowconfigure(0, weight=1)
+        for i in range(4):
+            self.columnconfigure(0, weight=1)
 
-        self.tabs.grid(column=0, row=0, rowspan=2, sticky="nsew")
-        self.side_panel.grid(column=1, row=0, stick="nse", pady=10, padx=5)
-        self.search_bar.grid(column=1, row=1, stick="nse", pady=10, padx=10)
+        self.tabs.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10)
+        self.side_panel.grid(row=0, column=1, sticky="nse", padx=10)
+        self.search_bar.grid(row=1, column=1, sticky="se", padx=10)
+        self.config(padx=10, pady=20)
+
+        # Κάνει τα F-keys να αλλάζουν το tab. Πρόχειρη υλοποίηση. Μπορεί να βελτιωθεί.
+        self.bind_all(
+            "<Key>",
+            lambda x: (self.tabs.select(int(x.keysym[1:]) - 1) if x.keysym.startswith("F") else None),
+        )
 
     def style_config(self):
-        # standard
 
+        # Standard
         style = ttk.Style(self)
         style.theme_use("alt")
-        style.configure("TButton", background=sbackground, foreground=sforeground)
-        style.configure("TLabel", background=sbackground, foreground=sforeground)
-        style.configure("TFrame", background=sbackground)
+        style.configure(
+            "TButton",
+            background=sbackground,
+            foreground=sforeground,
+        )
+        style.configure(
+            "TLabel",
+            background=sbackground,
+            foreground=sforeground,
+        )
+        style.configure(
+            "TFrame",
+            background=sbackground,
+        )
+
+        # Tabs
         style.configure(
             "TNotebook",
             background=sbackground,
@@ -115,10 +139,17 @@ class Window(tk.Tk):
             background=[("selected", "lightblue")],
             foreground=[("selected", "black")],
         )
-        style.configure("TEntry", fieldbackground=sfieldbackground)
         style.configure(
-            "Treeview.Heading", background=sbackground, foreground=sforeground
+            "TEntry",
+            fieldbackground=sfieldbackground,
         )
+        style.configure(
+            "Treeview.Heading",
+            background=sbackground,
+            foreground=sforeground,
+        )
+
+        # Customer sheet
         style.configure(
             "Treeview",
             background=sbackground,
@@ -134,17 +165,23 @@ class Window(tk.Tk):
             arrowcolor="white",
         )
 
-        # appointment grid
+        # Appointment grid
         style.configure(
-            "primary.TButton", background=pbackground, foreground=pforeground
+            "primary.TButton",
+            background=pbackground,
+            foreground=pforeground,
         )
         style.configure(
-            "primary.TLabel", background=pbackground, foreground=pforeground
+            "primary.TLabel",
+            background=pbackground,
+            foreground=pforeground,
         )
-        style.configure("primary.TFrame", background=pbackground)
+        style.configure(
+            "primary.TFrame",
+            background=pbackground,
+        )
 
-        # buttons
-
+        # Buttons
         style.configure(
             "low.TLabel",
             background=cfg["buttons"]["low"],
@@ -177,9 +214,14 @@ class Window(tk.Tk):
             "max.TButton",
             background=cfg["buttons"]["max"],
         )
-        style.configure("edit.TButton", background=cfg["buttons"]["max"])
-        style.configure("add.TButton", background=cfg["buttons"]["medium"])
+        style.configure(
+            "edit.TButton",
+            background=cfg["buttons"]["max"],
+        )
+        style.configure(
+            "add.TButton",
+            background=cfg["buttons"]["medium"],
+        )
 
-        style.configure("placeholder.TEntry", foreground="red")
-
+        # Sidepanel
         style.layout("side.TNotebook.Tab", [])

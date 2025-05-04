@@ -1,13 +1,22 @@
+"""
+Συλλογή από class και interface που εξυπηρετούν τα διάφορα widgets
+της εφαρμογής. Πολλά από αυτά είναι απομεινάρια από τις πρώτες υλοποιήσεις
+και δεν έχουν κάποια χρησιμότητα πλέον.
+"""
+
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
-from typing import Any, Protocol, runtime_checkable, Callable
-from ..controller.appointments_controller import AppointmentControl
-from ..controller import SubscriberInterface
+from typing import Any, Protocol
 
 
 class PopUp(tk.Toplevel):
+    """
+    Δημιουργεί ένα pop-up. Παλιά υλοποίηση που δεν χρησιμοποιείται
+    πλέον.
+    """
+
     def __init__(self, parent, *args, **kwargs):
         tk.Toplevel.__init__(self, parent, *args, **kwargs)
         self.AppContext = parent.AppContext
@@ -29,9 +38,7 @@ class Footer(ttk.Frame):
 
     def __init__(self, parent: tk.Frame, root: tk.Tk, *args, **kwargs):
         super().__init__(parent, *args, height=100, border=1, borderwidth=1, **kwargs)
-        tk.Button(self, text="Back to Overview", command=parent.pack_forget).pack(
-            side=tk.RIGHT
-        )
+        tk.Button(self, text="Back to Overview", command=parent.pack_forget).pack(side=tk.RIGHT)
 
 
 class BodyFrame(ttk.Frame):
@@ -83,6 +90,10 @@ class AppFrame(ttk.Frame):
 
 
 class EntryWithPlaceholder(ttk.Entry):
+    """
+    Αναβάθμιση του βασικού Entry widget να δείχνει placeholder κείμενο
+    στον χρήστη.
+    """
 
     def __init__(self, master, placeholder: str, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -103,54 +114,6 @@ class EntryWithPlaceholder(ttk.Entry):
         if text == self.placeholder:
             return None
         return text
-
-
-# class LabeledEntry(ttk.Frame):
-
-#     def __init__(
-#         self,
-#         master,
-#         var_type: type,
-#         field_name: str,
-#         callback_mapping: dict[str, Callable],
-#         placeholder: str,
-#         adjust_width_to_text: bool,
-#         *args,
-#         vertical=False,
-#         geometry_manager="pack",
-#         **kwargs,
-#     ):
-#         super().__init__(master, *args, **kwargs)
-#         self.label = ttk.Label(self, text=field_name)
-#         self.entry = ttk.Entry(self)
-#         self.type = type
-#         self.placeholder = placeholder
-#         self.original_style = kwargs.get("style")
-#         for event, callback in callback_mapping.items():
-#             self.entry.bind(event, callback)
-
-#         raise NotImplementedError
-
-#     def put_placeholder(self):
-#         self.entry.delete(0, tk.END)
-#         self.entry.insert(0, self.placeholder)
-#         self.entry.config(style="placeholder.TEntry")
-
-#     def click(self):
-#         if self.entry.get() == self.placeholder:
-#             self.entry.delete(0, tk.END)
-#         self.config(style="TEntry")
-
-#     def get_input(self) -> None | Any:
-#         user_input = self.entry.get()
-#         if user_input == self.placeholder:
-#             return None
-#         if user_input == "":
-#             return None
-#         try:
-#             return self.type(user_input)
-#         except Exception as e:
-#             raise ValueError(f"Input ({user_input}) cannot be coerced to {self.type}")
 
 
 class SideView(ttk.Frame):
@@ -186,9 +149,7 @@ class SideView(ttk.Frame):
 
         btnframe = ttk.Frame(self)
         btnframe.pack(side=tk.BOTTOM, fill="x")
-        self.back_btn = ttk.Button(
-            btnframe, text="Back", command=self.sidepanel.go_back
-        )
+        self.back_btn = ttk.Button(btnframe, text="Back", command=self.sidepanel.go_back)
         self.back_btn.pack(side=tk.RIGHT)
 
     def update_content(self, caller: Any | None, caller_data: Any | None):
@@ -203,16 +164,23 @@ class SideView(ttk.Frame):
         self.header.pack(side=tk.TOP, fill="x")
 
 
-@runtime_checkable
-class Caller(Protocol):
-    def show_in_sidepanel(self):
-        pass
+class Caller(tk.Widget):
+    """
+    Κλάσση διεπαφής για όλα τα widgets που καλούν sideviews
+    στο sidepanel.
+    """
+
+    def __init__(self):
+        self.sidepanel: SidePanel = self.nametowidget(".!sidepanel")
+
+    def show_in_sidepanel(self): ...
+
+
+# Τύποι (μη ολοκληρωμένη υλοποίηση)
 
 
 class SidePanel(Protocol):
-    def select_view(
-        self, name: str, caller: Any | None = None, caller_data: Any | None = None
-    ):
+    def select_view(self, name: str, caller: Any | None = None, caller_data: Any | None = None):
         pass
 
     def go_back(self):

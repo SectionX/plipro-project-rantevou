@@ -118,14 +118,14 @@ class Logger:
         if self.level <= self.levels.index(severity):
             print(message, file=sys.stderr)
 
-    def log_debug(self, message: str):
+    def log_debug(self, message: str) -> None:
         self.log(message, "DEBUG")
 
-    def log_info(self, message: str):
+    def log_info(self, message: str) -> None:
         self.log(message, "INFO")
 
-    def log_warn(self, message: str):
+    def log_warn(self, message: str) -> None:
         self.log(message, "WARN")
 
-    def log_error(self, message: str):
+    def log_error(self, message: str) -> None:
         self.log(message, "ERROR")

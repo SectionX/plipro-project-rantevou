@@ -20,6 +20,12 @@ mailer = Mailer()
 
 
 class AlertRow(ttk.Frame):
+    """
+    Widget που εμφανίζει τα στοιχεία ενός προσεχούς ραντεβού και την υπολοίπουσα
+    ώρα μέχρι αυτού. Φέρει κουμπιά επεξεργασίας και αποστολής email. Η ώρα ανανεώνεται
+    αυτόματα κάθε δευτερόλεπτο.
+    """
+
     appointment: Appointment | None
     customer: Customer | None
     show_button: ttk.Button
@@ -112,6 +118,12 @@ class AlertRow(ttk.Frame):
 
 
 class AlertsView(SideView, SubscriberInterface):
+    """
+    View που εμφανίζει τα προσεχή ραντεβού και επιτρέπει γρήγορη
+    επεξεργασία και αποστολή email. Λειτουργεί ως το default view
+    του sidepanel.
+    """
+
     name: str = "alert"
     rows: list[AlertRow]
     appointments: Iterable[Appointment]

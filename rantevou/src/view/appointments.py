@@ -233,7 +233,9 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def appointments(self):
-        result = AppointmentControl().get_appointments_by_period(self.period_start)
+        result = AppointmentControl().get_appointments_from_to_date(
+            self.period_start, self.period_start + timedelta(hours=2)
+        )
         result.sort(key=lambda x: x.date)
         return result
 
@@ -247,13 +249,17 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
     @property
     def previous_period_appointments(self):
-        appointments = AppointmentControl().get_appointments_by_period(self.period_start - timedelta(hours=2))
+        appointments = AppointmentControl().get_appointments_from_to_date(
+            self.period_start - timedelta(hours=2), self.period_start
+        )
         appointments.sort(key=lambda x: x.date)
         return appointments
 
     @property
     def next_period_appointments(self):
-        appointments = AppointmentControl().get_appointments_by_period(self.period_end + timedelta(hours=2))
+        appointments = AppointmentControl().get_appointments_from_to_date(
+            self.period_start + timedelta(hours=2), self.period_end + timedelta(hours=4)
+        )
         appointments.sort(key=lambda x: x.date)
         return appointments
 
@@ -410,7 +416,7 @@ class GridCell(ttk.Frame, SubscriberInterface):
 
         if appointments:
             last = appointments.pop()
-            if is_eligible(last.date, last.end_date):
+            if is_eligible(last.end_date, last.end_date):
                 slots.append(last)
 
         sidepanel.select_view("appointments", self, slots)

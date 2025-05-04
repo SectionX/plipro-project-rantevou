@@ -7,18 +7,19 @@ from tkinter.messagebox import showerror
 from .sidepanel import SidePanel
 from .abstract_views import SideView
 
-from ..model.entities import Customer
-from ..controller.appointments_controller import AppointmentControl
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
-from .entries import CustomerEntry
+from .forms import CustomerForm
 
 logger = Logger("customer-manager")
 mailer = Mailer()
 
 
 class AddCustomerView(SideView):
+    """
+    View δημιουργίας νέου πελάτη
+    """
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -27,7 +28,7 @@ class AddCustomerView(SideView):
         self.main_frame.pack(fill="both", expand=True)
 
         self.set_title("Προσθήκη νέου πελάτη")
-        self.customer_entry = CustomerEntry(self.main_frame)
+        self.customer_entry = CustomerForm(self.main_frame)
         self.customer_entry.pack(fill="x")
         self.save_button = ttk.Button(self.main_frame, text="Add", command=self.save)
         self.save_button.pack()
@@ -45,6 +46,9 @@ class AddCustomerView(SideView):
 
 
 class EditCustomerView(SideView):
+    """
+    View επεξεργασίας πελάτη
+    """
 
     def __init__(self, master: SidePanel, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -55,7 +59,7 @@ class EditCustomerView(SideView):
         self.set_title("Επεξεργασία νέου πελάτη")
         self.main_frame.pack(fill="both", expand=True)
 
-        self.customer_entry = CustomerEntry(self.main_frame)
+        self.customer_entry = CustomerForm(self.main_frame)
         self.customer_entry.pack(fill="x")
 
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)

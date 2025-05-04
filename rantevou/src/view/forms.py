@@ -2,16 +2,19 @@ from typing import Sequence
 from datetime import datetime, timedelta
 from tkinter import ttk
 import tkinter as tk
-from ..model.entities import Appointment, Customer
-from ..controller.appointments_controller import AppointmentControl
-from ..controller.logging import Logger
-from ..controller.exceptions import *
+from .exceptions import *
 from .abstract_views import EntryWithPlaceholder
+from ..controller.logging import Logger
+from ..model.entities import Appointment, Customer
 
 logger = Logger("entry")
 
 
-class AppointmentEntry(ttk.Frame):
+class AppointmentForm(ttk.Frame):
+    """
+    Φόρμα εισαγωγής/επεξεργασίας ραντεβού
+    """
+
     values: Sequence | None
 
     def __init__(self, *args, **kwargs):
@@ -60,7 +63,7 @@ class AppointmentEntry(ttk.Frame):
         if len(items) <= 6:
             return datetime(*map(int, items))  # type: ignore
         else:
-            raise ViewWrongDataError(items)
+            raise ViewInternalError("Datetime needs up to 6 fields")
 
     def reset(self):
         for v in self.__dict__.values():
@@ -85,10 +88,8 @@ class AppointmentEntry(ttk.Frame):
                 customer_id=self.data_customer_id,
             )
         except ValueError as e:
-            logger.log_error(str(e))
             raise ViewInputError(str(e))
         except Exception as e:
-            logger.log_error(str(e))
             raise ViewInternalError(str(e))
 
     def populate(self, appointment: Appointment | list):
@@ -102,9 +103,7 @@ class AppointmentEntry(ttk.Frame):
             values = appointment
 
         if values is None:
-            e = ViewWrongDataError(values)
-            logger.log_error(str(e))
-            raise e
+            raise ViewWrongDataError(self, self, values)
 
         (
             self.data_id,
@@ -132,7 +131,11 @@ class AppointmentEntry(ttk.Frame):
                     entry.insert(0, v)
 
 
-class CustomerEntry(ttk.Frame):
+class CustomerForm(ttk.Frame):
+    """
+    Φορμα εγγραφής/επεξεργασίας πελάτη
+    """
+
     values: Sequence | None
 
     def __init__(self, *args, **kwargs):
@@ -218,6 +221,4 @@ class CustomerEntry(ttk.Frame):
                     if isinstance(entry, ttk.Entry):
                         entry.insert(0, v)
         else:
-            e = ViewWrongDataError(customer)
-            logger.log_error(str(e))
-            raise e
+            raise ViewWrongDataError(self, self.master, customer)

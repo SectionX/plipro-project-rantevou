@@ -6,19 +6,23 @@ from tkinter.messagebox import showerror
 from datetime import datetime, timedelta
 
 from .sidepanel import SidePanel
-from .entries import AppointmentEntry, CustomerEntry
+from .forms import AppointmentForm, CustomerForm
 from .abstract_views import SideView, EntryWithPlaceholder
+from .exceptions import *
 from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
-from ..controller.exceptions import *
 
 logger = Logger("appointment-manager")
 mailer = Mailer()
 
 
 class EditAppointmentView(SideView):
+    """
+    View που εμφανίζει την φόρμα επεξεργασίας ραντεβού
+    """
+
     name: str = "edit"
     appointment: Appointment
     customer: Customer | None
@@ -34,10 +38,10 @@ class EditAppointmentView(SideView):
         self.appointment = Appointment()
         self.customer = None
 
-        self.appointment_entry = AppointmentEntry(self.main_frame)
+        self.appointment_entry = AppointmentForm(self.main_frame)
         self.appointment_entry.pack(fill="x")
 
-        self.customer_entry = CustomerEntry(self.main_frame)
+        self.customer_entry = CustomerForm(self.main_frame)
         self.customer_entry.pack(fill="x")
 
         self.save_button = ttk.Button(self.main_frame, text="Save", command=self.save)
@@ -50,10 +54,10 @@ class EditAppointmentView(SideView):
         logger.log_info(f"Showing data {caller_data} for editing")
 
         if caller_data is None:
-            raise ViewWrongDataError(caller_data)
+            raise ViewWrongDataError(self, caller, caller_data)
 
         if not isinstance(caller_data, Appointment):
-            raise ViewWrongDataError(caller_data)
+            raise ViewWrongDataError(self, caller, caller_data)
 
         self.appointment = caller_data
         self.customer = caller_data.customer
@@ -93,6 +97,8 @@ class EditAppointmentView(SideView):
 
 
 class AddAppointmentView(SideView):
+    "View που εμφανίζει την φόρμα δημιουργίας νέου ραντεβού"
+
     name: str = "add"
     field_day: ttk.Entry
     field_hour: ttk.Entry
@@ -110,8 +116,8 @@ class AddAppointmentView(SideView):
         self.appointment = None
         self.customer = None
 
-        self.appointment_entry = AppointmentEntry(self.main_frame)
-        self.customer_entry = CustomerEntry(self.main_frame)
+        self.appointment_entry = AppointmentForm(self.main_frame)
+        self.customer_entry = CustomerForm(self.main_frame)
 
         self.appointment_entry.pack(fill="x")
         self.customer_entry.pack(fill="x")

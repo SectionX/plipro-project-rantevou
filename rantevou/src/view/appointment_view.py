@@ -1,27 +1,25 @@
 from __future__ import annotations
 
-import tkinter as tk
 from tkinter import ttk
-from tkinter.messagebox import showerror
 from datetime import datetime, timedelta
-from typing import Literal
 
-from .sidepanel import SidePanel
-from .abstract_views import EntryWithPlaceholder
 from . import abstract_views
+from .sidepanel import SidePanel
+from .exceptions import *
 
-from ..model.entities import Appointment, Customer
-from ..controller.appointments_controller import AppointmentControl
+from ..model.entities import Appointment
 from ..controller.logging import Logger
-from ..controller.mailer import Mailer
-from ..controller.exceptions import *
 
-#
+
 logger = Logger("appointment-view")
-mailer = Mailer()
 
 
 class AppointmentViewButton(ttk.Button):
+    """
+    Τα κουμπιά που εμφανίζονται στο sidepanel όταν ο χρήστης πατήσει
+    σε κάποια περίοδο στο Grid.
+    """
+
     appointment: Appointment
 
     def __init__(
@@ -34,6 +32,9 @@ class AppointmentViewButton(ttk.Button):
         self.sidepanel: SidePanel = master.master.sidepanel
 
     def set(self, appointment: Appointment):
+        """
+        Καλείται από το sideview για να ενημερώσει τα στοιχεία του κουμπιού.
+        """
         self.appointment = appointment
         if appointment.id:
             text = f"{appointment.date.strftime('%H:%M')}-{appointment.end_date.strftime('%H:%M')}"
@@ -43,6 +44,18 @@ class AppointmentViewButton(ttk.Button):
             self.create_add_button()
 
     def create_add_button(self):
+        """
+        Αυτή η συνάρτηση είναι σχετική για τις περιόδους χωρίς κλεισμένο ραντεβού.
+        Εμφανίζει τις κατάλληλες πληροφορίες στον χρήστη και αυτοκαταστρέφεται εάν
+        έχει περάσει η ώρα και ημερομηνία της σχετικής περιόδου.
+
+        Εδώ υπήρχε ένα πολύ περίεργο bug που μου πήρε κάποια ώρα να το εντοπίσω και
+        ακόμα δημιουργεί artifacts. Φαίνεται πως το tkinter έχει κάποιο πρόβλημα να
+        διαχειριστεί την καταστροφή του widget αμέσως μετά την δημιουργία του.
+
+        Για αυτό τον σκοπό χρησιμοποιήθηκαν οι .after μέθοδοι που φαινομενικά λύνουν
+        το πρόβλημα επειδή ξαναβάζουν το widget στο event loop.
+        """
         date = self.appointment.date
         duration = self.appointment.duration
         end_date = self.appointment.end_date
@@ -79,6 +92,11 @@ class AppointmentViewButton(ttk.Button):
 
 
 class AppointmentView(abstract_views.SideView):
+    """
+    To View που εμφανίζεται στο sidepanel όταν ο χρήστης πάτησει
+    σε κάποια περίοδο στο Grid.
+    """
+
     name: str = "appointments"
     add_button: ttk.Button
     edit_button: ttk.Button
@@ -94,14 +112,23 @@ class AppointmentView(abstract_views.SideView):
         self.back_btn.config(command=master.go_back)
 
     def update_content(self, caller, caller_data):
+        """
+        Συνάρτηση που καλείται από το SidePanel στο click event. Η πολύπλοκη λογική
+        είναι επειδή πρέπει να μετράει τα κουμπιά και να τα συγκρίνει με το πλήθος δεδομένων
+        και να τα κατανέμει/επεξεργάζεται με τον πιο αποδοτικό τρόπο.
+
+        Αυτή η βελτιστοποίηση προτιμήθηκε αντί απλής κατάστροφής των widget επειδή η
+        δημιουργία κουμπιών είναι σχετικά αργή και φαινόταν άσχημα στο μάτι. Ακόμα και τώρα
+        είναι πολύ εμφανές, ακόμα και όταν αλλάζει το πλήθος των κουμπιών κατα 1.
+        """
         if not isinstance(caller_data, list):
-            raise ViewWrongDataError(caller_data)
+            raise ViewWrongDataError(self, caller, caller_data)
 
         if len(caller_data) == 0:
             return
 
         if not isinstance(caller_data[0], Appointment):
-            raise ViewWrongDataError(caller_data[0])
+            raise ViewWrongDataError(self, caller, caller_data[0])
 
         buttons: list[AppointmentViewButton] = []
         for widget in self.main_frame.children.values():

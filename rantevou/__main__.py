@@ -78,8 +78,6 @@ def main():
         root = Window()
         root.mainloop()
 
-    print(args)
-
 
 if __name__ == "__main__":
     main()
