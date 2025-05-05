@@ -1,27 +1,15 @@
-from typing import Protocol, runtime_checkable
-from datetime import datetime
+"""
+Δήλωση τύπων για εσωτερική χρήση από τα models.
+Δεν προορίζονται για instantiation.
+"""
 
-from .entities import Appointment
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
-class Subscriber(Protocol):
+class SubscriberInterface(Protocol):
     """
-    Interface για όλα τα στοιχεία που κάνουν subscribe για να
-    ενημερώνονται όταν γίνονται σημαντικές αλλαγές στην  βάση
-    δεδομένων
+    Ορισμός του subscriber interface για τα models
     """
 
     def subscriber_update(self): ...
-
-
-class AppointmentModel(Protocol):
-    """
-    Interface με το μοντέλο ραντεβού
-    """
-
-    def get_appointment_by_id(self, appointment_id: int) -> Appointment | None: ...
-    def get_appointment_by_date(self, date: datetime) -> Appointment | None: ...
-    def get_appointments_from_to_date(
-        self, from_date: datetime, to_date: datetime
-    ) -> list[Appointment]: ...

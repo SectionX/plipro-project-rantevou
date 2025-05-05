@@ -43,9 +43,14 @@ class AppointmentControl:
         """
         Προσθέτει καινούρια εγγραφή στο table Appointments
         """
-        logger.log_info(f"Requesting creation of {appointment} for {customer}")
+        logger.log_info(f"Requesting creation of {appointment}")
 
         if customer is None:
+            logger.log_debug("Creating appointment without customer")
+            appointment.customer_id = None
+            return self.model.add_appointment(appointment)
+
+        if not any(customer.values):
             logger.log_debug("Creating appointment without customer")
             appointment.customer_id = None
             return self.model.add_appointment(appointment)

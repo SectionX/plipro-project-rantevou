@@ -10,7 +10,7 @@ from .sidepanel import SidePanel
 from ..model.entities import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
-from ..controller import SubscriberInterface
+from ..controller.subscriber import SubscriberInterface
 from ..controller import get_config
 
 config = get_config()
@@ -171,9 +171,9 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.reset()
         self.current_page = 1
         self.customers, self.max_page = self.get_customer_page()
-        self.populate_sheet()
+        self.populate_sheet(update=False)
 
-    def populate_sheet(self):
+    def populate_sheet(self, update=True):
         """
         Η κεντρική συνάρτηση του customer tab. Ορίζει την δημιουργία του query
         στην βάση δεδομένων βάση του πως αλλάζουν την κατάσταση της τα υπόλοιπα
@@ -186,13 +186,14 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         Εφόσον είναι περιορισμένη στις 100 εγγραφές ανα σελίδα είναι αρκετά
         αποδοτική.
         """
-        self.customers, self.max_page = CustomerControl().get_customers(
-            page_number=self.current_page,
-            page_length=self.page_length,
-            search_query=self.search_query,
-            sorted_by=self.sorted_by,
-            descending=self.descending,
-        )
+        if update:
+            self.customers, self.max_page = CustomerControl().get_customers(
+                page_number=self.current_page,
+                page_length=self.page_length,
+                search_query=self.search_query,
+                sorted_by=self.sorted_by,
+                descending=self.descending,
+            )
 
         self.delete(*self.get_children())
         for customer in self.customers:

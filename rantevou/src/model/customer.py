@@ -6,7 +6,7 @@ from math import ceil
 from sqlalchemy import func, or_, desc
 
 from .session import session
-from .interfaces import Subscriber
+from .interfaces import SubscriberInterface
 from .entities import Customer
 from ..controller.logging import Logger
 
@@ -14,7 +14,7 @@ logger = Logger("customer-model")
 
 
 class CustomerModel:
-    subscribers: list[Subscriber]
+    subscribers: list[SubscriberInterface]
     _instance = None
     session = session
     max_id: int
@@ -78,20 +78,6 @@ class CustomerModel:
             .first()
         )
 
-    def normalize(self, customer: Customer):
-        """
-        Μετατροπή name και surname σε μορφή χωρίς κεφαλαία και τόνους
-        """
-        customer.normalized_name = (
-            normalize("NFKD", customer.name).lower().replace("́", "")
-        )
-        try:
-            customer.normalized_surname = (
-                normalize("NFKD", customer.surname).lower().replace("́", "")
-            )
-        except:
-            pass
-
     def add_customer(self, customer: Customer) -> tuple[int | None, bool]:
         """
         Δημιουργία καινούριου πελάτη. Ελέγχει αν υπάρχει ήδη ο πελάτης
@@ -105,12 +91,6 @@ class CustomerModel:
         # Σημαντική προεπεξεργασία ώστε τα κενά strings να μετατρέπονται
         # σε None. Αλλιώς θεωρεί ότι το "" είναι πληροφορία και δεν δέχεται
         # δεύτερο πελάτη με κενό τηλέφωνο η email.
-        try:
-            self.normalize(customer)
-            self.sanitize(customer)
-        except:
-            logger.log_warn(f"Failed to create customer")
-            return None, False
 
         # Έλεγχος ύπαρξης πελάτη
         existing_customer = self.filter_by_all(customer)
@@ -123,8 +103,9 @@ class CustomerModel:
             try:
                 session.add(customer)
                 session.commit()
-                self.max_id += 1
-                logger.log_info(f"Assigned id={self.max_id}")
+                session.refresh(customer)
+                self.max_id += customer.id
+                logger.log_debug(f"Assigned id={self.max_id}")
             except Exception as e:
                 logger.log_error(str(e))
                 session.rollback()
@@ -186,11 +167,6 @@ class CustomerModel:
         Επιστρέφει boolean επιτυχούς ενημέρωσης
         """
         logger.log_info(f"Excecuting update of {new_customer}")
-        try:
-            self.sanitize(new_customer)
-            self.normalize(new_customer)
-        except:
-            return False
 
         # Αναζητεί την παλιά εγγραφή του πελάτη
         old_customer = None
@@ -219,6 +195,7 @@ class CustomerModel:
         # Εκτελεί την ενημέρωση στην βάση δεδομένων
         try:
             session.commit()
+            # session.refresh(new_customer)
         except Exception as e:
             logger.log_error(str(e))
             session.rollback()
@@ -243,14 +220,12 @@ class CustomerModel:
     def get_customer_by_phone(self, phone: str) -> Customer | None:
         return session.query(Customer).filter_by(phone=phone).first()
 
-    def add_subscriber(self, subscriber: Subscriber) -> None:
+    def add_subscriber(self, subscriber: SubscriberInterface) -> None:
         logger.log_info(f"Excecuting subscription of {subscriber}")
         self.subscribers.append(subscriber)
 
     def notify_subscribers(self) -> None:
-        logger.log_info(
-            f"Excecuting notification of {len(self.subscribers)} subscribers"
-        )
+        logger.log_info(f"Excecuting notification of {len(self.subscribers)} subscribers")
         for sub in self.subscribers:
             sub.subscriber_update()
 

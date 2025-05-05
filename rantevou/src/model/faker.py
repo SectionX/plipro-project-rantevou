@@ -4,15 +4,6 @@ from .session import SessionLocal, Base, engine
 session = SessionLocal()
 
 
-def normalize_cus(customer):
-    customer.normalized_name = normalize("NFKD", customer.name).lower().replace("́", "")
-    try:
-        customer.normalized_surname = normalize("NFKD", customer.surname).lower().replace("́", "")
-    except:
-        pass
-
-
-# TODO Καθαρισμός και μεταφορά σε άλλο αρχείο
 def generate_fake_customer_data(n):
     from itertools import combinations
     from faker import Faker
@@ -31,7 +22,6 @@ def generate_fake_customer_data(n):
                 email=f"{''.join(next(combs_email))}@example.com",
                 phone=f"{start}{''.join(next(combs_phone))}",
             )
-            normalize_cus(cus)
             yield cus
         except StopIteration:
             start += 1

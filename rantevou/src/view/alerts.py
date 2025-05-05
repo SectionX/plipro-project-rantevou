@@ -12,7 +12,7 @@ from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
-from ..controller import SubscriberInterface
+from ..controller.subscriber import SubscriberInterface
 from typing import Protocol
 
 logger = Logger("alerts-view")

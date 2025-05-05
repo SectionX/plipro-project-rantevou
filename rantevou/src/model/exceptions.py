@@ -1,3 +1,9 @@
+"""
+Module με όλα τα exceptions που αφορούν τα μοντέλα.
+
+Είναι ρυθμισμένα να κάνουν αυτόματο logging κατα την ενεργοποίηση.
+"""
+
 from typing import Literal
 from rantevou.src.controller.logging import Logger
 
@@ -11,9 +17,10 @@ class ModelException(Exception):
     logger = Logger("Model")
     level: Literal["DEBUG", "INFO", "WARN", "ERROR"] = "WARN"
 
-    def __init__(self):
+    def __init__(self, *args):
         if self.__doc__ is None:
             self.__doc__ = ""
+        self.__doc__ += ", " + " ".join(str(arg) for arg in args)
         self.logger.log(self.__doc__, self.level)
 
     def __str__(self):
@@ -22,15 +29,26 @@ class ModelException(Exception):
         return self.__doc__
 
 
+class NoSubscriberInterface(ModelException):
+    """Object does not implement SubscriberInterface"""
+
+    def __init__(self, object_, *args):
+        if self.__doc__ is None:
+            self.__doc__ = str(object_)
+        else:
+            self.__doc__ += f": {str(object_)}"
+        super().__init__(*args)
+
+
 class AppointmentModelException(ModelException):
     """Base exception for appointment model errors"""
 
     logger = appointment_logger
 
-    def __init__(self, appointment=None, db_exception=None):
+    def __init__(self, appointment=None, db_exception=None, *args):
         if db_exception is not None:
             self.level = "ERROR"
-        super().__init__()
+        super().__init__(*args)
         self.appointment = appointment
         self.db_exception = db_exception
 
@@ -58,8 +76,16 @@ class CustomerModelException(ModelException):
 ### Appointment Exceptions
 
 
+class ValidationError(ModelException):
+    """Cannot validate or coerce the object"""
+
+
 class DateOverlap(AppointmentModelException):
     """Cannot add new appointment in this time slot"""
+
+
+class WrongAppointment(AppointmentModelException):
+    """Appointments with the same id have different data"""
 
 
 class AppointmentIdAlreadyExists(AppointmentModelException):

@@ -30,29 +30,37 @@ class CustomerControl:
         sorted_by: str = "",
         descending: bool = False,
     ) -> tuple[list[Customer], int]:
-        return self.model.get_customers(
-            page_number, page_length, search_query, sorted_by, descending
+        logger.log_info(
+            f"Requesting customer search with query: {page_number}, {page_length}, {search_query}, {sorted_by}, {descending}"
         )
+        return self.model.get_customers(page_number, page_length, search_query, sorted_by, descending)
 
     def create_customer(self, customer: Customer):
+        logger.log_info(f"Requesting creation of {customer}")
         return self.model.add_customer(customer)
 
     def delete_customer(self, customer: Customer) -> bool:
+        logger.log_info(f"Requesting deletion of {customer}")
         return self.model.delete_customer(customer)
 
     def update_customer(self, customer: Customer) -> bool:
+        logger.log_info(f"Requesting update of {customer}")
         return self.model.update_customer(customer)
 
-    def get_customer_by_id(self, id) -> Customer | None:
+    def get_customer_by_id(self, id: int) -> Customer | None:
+        logger.log_info(f"Requesting customer search by id {id}")
         return self.model.get_customer_by_id(id)
 
     def get_customer_by_email(self, email: str) -> Customer | None:
+        logger.log_info(f"Requesting customer search by email {email}")
         return self.model.get_customer_by_email(email)
 
     def add_subscription(self, node) -> None:
+        logger.log_info(f"Requesting subscription for node {node}")
         self.model.add_subscriber(node)
 
     def search(self, string: str) -> list[Customer]:
+        logger.log_info(f"Requesting customer search with query: {string}")
         if string == "":
             return self.model.customers
         return self.model.customer_search(string)

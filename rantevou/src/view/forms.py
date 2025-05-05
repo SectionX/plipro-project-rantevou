@@ -219,6 +219,8 @@ class CustomerForm(ttk.Frame):
                     name = k.rsplit("_", maxsplit=1)[-1]
                     entry = self.__dict__.get(f"cus_entry_{name}")
                     if isinstance(entry, ttk.Entry):
+                        if v is None:
+                            v = ""
                         entry.insert(0, v)
         else:
             raise ViewWrongDataError(self, self.master, customer)

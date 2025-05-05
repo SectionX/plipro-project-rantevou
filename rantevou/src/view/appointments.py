@@ -14,7 +14,8 @@ from .sidepanel import SidePanel
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
-from ..controller import get_config, SubscriberInterface
+from ..controller.subscriber import SubscriberInterface
+from ..controller import get_config
 
 from ..model.entities import Appointment
 
