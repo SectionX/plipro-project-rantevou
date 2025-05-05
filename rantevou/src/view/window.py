@@ -45,21 +45,14 @@ class Notebook(ttk.Notebook):
     data: dict[str, Any] = {}
 
 
-def create_window() -> Window:
-    """
-    Window factory για να μην μπλέκονται τα imports με τις αρχικοποιήσεις
-    """
-    return Window()
-
-
 class Window(tk.Tk):
     """
     To top level παράθυρο. Αποτελείται από το main panel με tabs, το sidepanel που δείχνει διαχειριστικές
     ενέργειες και λεπτομερείς πληροφορίες, και το search bar που ψάχνει για κενά ραντεβού.
     """
 
-    def __init__(self, title: str = "Appointments App", width: int = 1400, height: int = 600):
-        super().__init__()
+    def __init__(self, tk: tk.Tk, title: str = "Appointments App", width: int = 1400, height: int = 600):
+        self.__dict__.update(tk.__dict__)
 
         # Βασικές αρχικοποιήσεις
         self.geometry(f"{width}x{height}")

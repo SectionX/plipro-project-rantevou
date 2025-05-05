@@ -1,9 +1,9 @@
 from sys import exit
 import argparse
+import tkinter as tk
 
 from .src.controller.logging import Logger
 from .src.model.faker import reset_db, initialize_fake_db
-from .src.view.window import Window
 
 parser = argparse.ArgumentParser("Rantevou", "rantevou, rantevou --web", "Appointment manager for small businesses.")
 parser.add_argument("-w", "--web", action="store_true", help="Starts a flask server to serve the app", default=False)
@@ -74,8 +74,10 @@ def main():
     else:
         logger = Logger("main")
         logger.log_info("Starting Rantevou")
+        root = tk.Tk()
+        from .src.view.window import Window
 
-        root = Window()
+        root = Window(root)
         root.mainloop()
 
 

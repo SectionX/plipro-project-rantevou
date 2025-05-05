@@ -7,6 +7,7 @@ from tkinter.messagebox import askyesno
 from typing import Any, Literal, Protocol, runtime_checkable
 from .abstract_views import AppFrame
 from .sidepanel import SidePanel
+from .shared import set_customer
 from ..model.entities import Customer
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
@@ -227,12 +228,16 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         Συνάρτηση διεπαφής που γράφει αυτόματα τα στοιχεία του πελάτη
         στις φόρμες εισαγωγής/επεξεργασίας
         """
-        side_view = self.sidepanel.active_view
-        if isinstance(side_view, PopulateFromCustomer):
-            try:
-                side_view.populate_from_customer_tab(self.focus_values)
-            except:
-                logger.log_error(f"Failed to communicate with {side_view}")
+        set_customer(self.__load_from_list(self.focus_values))
+
+    def __load_from_list(self, values) -> Customer:
+        return Customer(
+            id=values[0],
+            name=values[1],
+            surname=values[2],
+            phone=values[3],
+            email=values[4],
+        )
 
 
 class ManagementBar(ttk.Frame):

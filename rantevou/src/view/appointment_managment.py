@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
 from datetime import datetime, timedelta
+from typing import Any
 
 from .sidepanel import SidePanel
 from .forms import AppointmentForm, CustomerForm
@@ -49,23 +50,25 @@ class EditAppointmentView(SideView):
         self.delete_button = ttk.Button(self.main_frame, text="Delete", command=self.delete)
         self.delete_button.pack()
 
-    def update_content(self, caller, caller_data):
+    def update_content(self, caller, caller_data: Appointment | Any | None):
         self.reset()
-        logger.log_info(f"Showing data {caller_data} for editing")
+        appointment = caller_data
 
-        if caller_data is None:
-            raise ViewWrongDataError(self, caller, caller_data)
+        logger.log_info(f"Showing data {appointment} for editing")
 
-        if not isinstance(caller_data, Appointment):
-            raise ViewWrongDataError(self, caller, caller_data)
+        if appointment is None:
+            raise ViewWrongDataError(self, caller, appointment)
 
-        self.appointment = caller_data
-        self.customer = caller_data.customer
+        if not isinstance(appointment, Appointment):
+            raise ViewWrongDataError(self, caller, appointment)
+
+        self.appointment = appointment
+        self.appointment_entry.populate(self.appointment)
+
+        self.customer = appointment.customer
+        self.customer_entry.populate(self.customer)
 
         logger.log_info(f"Showing data {self.customer} for editing")
-
-        self.appointment_entry.populate(self.appointment)
-        self.customer_entry.populate(self.customer)
 
     def delete(self):
         self.appointment = self.appointment_entry.get()
@@ -89,7 +92,7 @@ class EditAppointmentView(SideView):
             if isinstance(v, ttk.Entry):
                 v.delete(0, tk.END)
 
-    def populate_from_customer_tab(self, customer_data: Customer | list):
+    def populate_from_customer_tab(self, customer_data: Customer):
         if not (isinstance(customer_data, list) or isinstance(customer_data, Customer)):
             raise ViewWrongDataError(customer_data)
 
@@ -156,18 +159,8 @@ class AddAppointmentView(SideView):
         self.sidepanel.go_back()
 
     def populate_from_customer_tab(self, customer_data):
-        if not isinstance(customer_data, list):
-            logger.log_warn("Failed to communicate customer data")
-            return
-
-        if len(customer_data) < 5:
+        if not isinstance(customer_data, Customer):
             logger.log_warn("Failed to communicate customer data")
             return
 
         self.customer_entry.populate(customer_data)
-
-    def reset(self):
-        for k, v in self.__dict__.items():
-            if isinstance(v, EntryWithPlaceholder):
-                v.delete(0, tk.END)
-                v.put_placeholder()

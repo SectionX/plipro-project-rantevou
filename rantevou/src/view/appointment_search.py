@@ -75,16 +75,22 @@ class SearchResultsView(abstract_views.SideView):
         if not isinstance(caller_data, Type.Sequence):
             raise ViewWrongDataError(self, caller, caller_data)
 
-        if len(caller_data) == 0:
-            return
+        if len(caller_data) < 2:
+            raise ViewWrongDataError(self, caller, caller_data)
 
-        if not (
-            isinstance(caller_data, Type.Sequence)
-            and len(caller_data) == 2
-            and isinstance(caller_data[0], list)
-            and isinstance(caller_data[0][0], datetime)
-            and isinstance(caller_data[1], timedelta)
-        ):
+        if not isinstance(caller_data[0], Type.Sequence):
+            raise ViewWrongDataError(self, caller, caller_data)
+
+        if not isinstance(caller_data[1], timedelta):
+            raise ViewWrongDataError(self, caller, caller_data)
+
+        if not isinstance(caller_data[0][0], Type.Sequence):
+            raise ViewWrongDataError(self, caller, caller_data)
+
+        if not isinstance(caller_data[0][0][0], datetime):
+            raise ViewWrongDataError(self, caller, caller_data)
+
+        if not isinstance(caller_data[0][0][1], timedelta):
             raise ViewWrongDataError(self, caller, caller_data)
 
         self.dates, self.user_input = caller_data

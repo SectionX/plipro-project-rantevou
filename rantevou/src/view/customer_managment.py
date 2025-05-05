@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
 
@@ -10,6 +9,7 @@ from .abstract_views import SideView
 from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller.mailer import Mailer
+from ..model.entities import Customer
 from .forms import CustomerForm
 
 logger = Logger("customer-manager")
@@ -66,11 +66,7 @@ class EditCustomerView(SideView):
         self.save_button.pack()
 
     def update_content(self, caller, caller_data):
-        if not isinstance(caller_data, list):
-            logger.log_warn("Failed to communicate customer data")
-            return
-
-        if len(caller_data) < 5:
+        if not isinstance(caller_data, Customer):
             logger.log_warn("Failed to communicate customer data")
             return
 
