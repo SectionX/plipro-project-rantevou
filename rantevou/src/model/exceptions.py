@@ -149,3 +149,11 @@ class InvalidEmail(CustomerModelException):
 
 class InvalidPhone(CustomerModelException):
     """Phone entry cannot be validated"""
+
+
+class IdOnNewCustomer(CustomerModelException):
+    """New customer should not possess id before insertion"""
+
+
+class CustomerDBError(CustomerModelException):
+    """Some went wrong during db transaction"""

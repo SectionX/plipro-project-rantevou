@@ -125,7 +125,8 @@ class AppointmentModel:
         try:
             self.session.add(appointment)
             self.session.commit()
-            self.max_id += 1
+            self.session.refresh(appointment)
+            self.max_id = appointment.id
             logger.log_debug(f"Assigned id={self.max_id}")
         except DatabaseError as e:
             self.session.rollback()
@@ -170,7 +171,8 @@ class AppointmentModel:
         """
         Ενημέρωση στοιχείων ραντεβού στην βάση δεδομένων και ενημέρωση cache
 
-        Επιβάλλει να υπάρχει id στο ραντεβού προς ενημέρωση. Επιστρέφει μόνο True εάν όλα πάνε καλά
+        Επιβάλλει να υπάρχει id στο ραντεβού προς ενημέρωση αλλιώς επιστρέφει στάλμα. Εάν η ημερομηνία συμπίπτει
+        με άλλο ραντεβού επιστρέφει σφάλμα. Επιστρέφει μόνο True εάν όλα πάνε καλά.
 
         Args:
             appointment (Appointment): Ραντεβού προς αλλαγή
@@ -194,29 +196,29 @@ class AppointmentModel:
         if appointment.id is None:
             raise IdMissing(appointment)
 
-        old_appointment = session.query(Appointment).filter_by(id=appointment.id).first()
-
-        if old_appointment is None:
-            raise IdNotFoundInDB(appointment)
-
-        # Ενημέρωση του ραντεβού
-        if customer_id is not None:
-            logger.log_debug(f"Adding {customer_id=} to {appointment.id=}")
-            old_appointment.customer_id = customer_id
-
-        old_appointment.date = appointment.date
-        old_appointment.duration = appointment.duration
-        old_appointment.is_alerted = appointment.is_alerted
-
-        # Εγγραφή στην βάση δεδομένων
         try:
-            self.session.commit()
+            (
+                session.query(Appointment)
+                .filter_by(id=appointment.id)
+                .update(
+                    {
+                        Appointment.date: appointment.date,
+                        Appointment.duration: appointment.duration,
+                        Appointment.customer_id: appointment.customer_id,
+                        Appointment.employee_id: appointment.employee_id,
+                        Appointment.is_alerted: appointment.is_alerted,
+                    }
+                )
+            )
+            session.commit()
+            appointment = session.merge(appointment, load=True)
+
         except DatabaseError as e:
             self.session.rollback()
             raise AppointmentDBError(appointment, e) from e
 
         # Ενημέρωση του cache
-        self.cache.update(old_appointment)
+        self.cache.update(appointment)
 
         # Ενημέρωση των subscribers
         self.update_subscribers()

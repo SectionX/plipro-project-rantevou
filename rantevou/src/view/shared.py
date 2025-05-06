@@ -1,4 +1,35 @@
-# Πειραματική αλλαγή
+"""
+Πειραματική αλλαγή με δήλωση global tk μεταβλητές για χρήση σε φόρμες.
+
+Η χρήση τους είναι λίγο επικίνδυνη λόγω import conflicts, partial initializations
+και dependencies. Επίσης ο κώδικας είναι πολύ προχειρογραμμένος. Επειδή δουλεύει,
+αν και χρειάστηκαν ραψίματα, το αφήνω όπως έχει προς το παρών.
+
+Το βασικό πρόβλημα είναι ότι όλες οι tk μεταβλητές είναι εσωτερικά συνδεδεμένες
+με το tcl runtime, οπότε δεν επιτρέπεται να αρχικοποιηθούν εκτός context.
+
+Επίσης η __load δεν δουλεύει επειδή τρέχει σε διαφορετικό thread, άγνωστο στο tk.
+Την αφήνω για λόγους ιστορικού μέχρι να σκεφτώ κάποιο καλύτερο τρόπο να εφαρμόσω
+loading text χωρίς να πρέπει να προγραμματίσω κάθε component ξεχωριστά.
+
+Εν ολίγης, για όποιον θέλει να χρησιμοποιήσει τα functions σε αυτό το module,
+ο τρόπος είναι
+
+Για απλή μεταφορά δεδομένων σε forms
+>>> from rantevou.src.shared import set_appointment, ...
+>>> from rantevou.src.model.entities import Appointment
+>>> from datetime import datetime, timedelta
+>>> appointment = Appointment(date=datetime.now(), duration=timedelta(minutes=20))
+>>> set_appointment(appointment)
+
+Για την κατασκευή forms
+>>> import tkinter as tk
+>>> root = tk.Tk() # Σημαντική η σειρά αν είναι σε νέο tk app.
+>>> from rantevou.src.shared import from_appointment_year, ...
+>>> entry = tk.Entry(root, textvariable=from_appointment_year)
+
+"""
+
 from time import sleep
 from tkinter import StringVar, IntVar
 from threading import Thread
@@ -11,41 +42,10 @@ cfg = get_config()["view_settings"]
 min_duration = cfg["minimum_appointment_duration"]
 
 
-# class StringVar:
-
-#     def __init__(self):
-#         self.value = ""
-
-#     def get(self):
-#         return self.value
-
-#     def set(self, value):
-#         self.value = str(value)
-
-#     def __str__(self):
-#         return self.value
-
-
-# class IntVar:
-
-#     def __init__(self):
-#         self.value = 0
-
-#     def get(self):
-#         return self.value
-
-#     def set(self, value):
-#         self.value = int(value)
-
-#     def __str__(self):
-#         return str(self.value)
-
-
 loading_text: StringVar = StringVar()
 
 
 def __load():
-    global loading_text
     dots = ["", "", ""]
     dot_pointer = 0
 
@@ -68,6 +68,7 @@ Thread(target=__load, daemon=True).start()
 __appointment_id: int | None = None
 __appointment_customer_id: int | None = None
 __appointment_employee_id: int | None = None
+__appointment_alerted: bool = False
 form_appointment_year: IntVar = IntVar()
 form_appointment_month: IntVar = IntVar()
 form_appointment_day: IntVar = IntVar()
@@ -95,6 +96,7 @@ def set_appointment(appointment: Appointment | None) -> None:
     global __appointment_id
     global __appointment_customer_id
     global __appointment_employee_id
+    global __appointment_alerted
     global form_appointment_year
     global form_appointment_month
     global form_appointment_day
@@ -118,6 +120,7 @@ def set_appointment(appointment: Appointment | None) -> None:
     __appointment_id = appointment.id
     __appointment_customer_id = appointment.customer_id
     __appointment_employee_id = appointment.employee_id
+    __appointment_alerted = appointment.is_alerted
 
     form_appointment_year.set(appointment.date.year or 0)
     form_appointment_month.set(appointment.date.month or 0)
@@ -137,6 +140,7 @@ def get_appointment() -> Appointment:
     global __appointment_id
     global __appointment_customer_id
     global __appointment_employee_id
+    global __appointment_alerted
     global form_appointment_year
     global form_appointment_month
     global form_appointment_day
@@ -157,6 +161,7 @@ def get_appointment() -> Appointment:
         id=__appointment_id,
         customer_id=__appointment_customer_id,
         employee_id=__appointment_employee_id,
+        is_alerted=__appointment_alerted,
     )
 
     return appointment
@@ -169,6 +174,7 @@ def reset_appointment() -> None:
     global __appointment_id
     global __appointment_customer_id
     global __appointment_employee_id
+    global __appointment_alerted
     global form_appointment_year
     global form_appointment_month
     global form_appointment_day
@@ -179,6 +185,7 @@ def reset_appointment() -> None:
     __appointment_id = None
     __appointment_customer_id = None
     __appointment_employee_id = None
+    __appointment_alerted = False
 
     now = datetime.now()
 

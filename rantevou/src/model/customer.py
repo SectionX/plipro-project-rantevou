@@ -1,19 +1,29 @@
+"""
+Ορισμός του μοντέλου δεδομένων των πελατών. Ορίζει μεθόδους αναζήτησης στην βάση δεδομένων,
+καθώς και εισαγωγή, επεξεργασία και διαγραφή.
+"""
+
 from __future__ import annotations
 
-from unicodedata import normalize
 from math import ceil
 
 from sqlalchemy import func, or_, desc
+from sqlalchemy.exc import DatabaseError
 
 from .session import session
-from .interfaces import SubscriberInterface
 from .entities import Customer
+from .interfaces import SubscriberInterface
+from .exceptions import IdNotFoundInDB, IdMissing, InvalidEmail, InvalidPhone, IdOnNewCustomer, CustomerDBError
 from ..controller.logging import Logger
 
 logger = Logger("customer-model")
 
 
 class CustomerModel:
+    """
+    Μοντέλο δεδομένων πελάτη. Εφαρμόοζει singleton pattern.
+    """
+
     subscribers: list[SubscriberInterface]
     _instance = None
     session = session
@@ -29,23 +39,16 @@ class CustomerModel:
 
         return cls._instance
 
-    @property
-    def customers(self) -> list[Customer]:
-        return self.session.query(Customer).all()
-
-    def sanitize(self, customer: Customer):
-        """
-        Μετατρέπει τα κενά strings σε None
-        """
-        for k, v in customer.__dict__.items():
-            if k.startswith("_"):
-                continue
-            if isinstance(v, str) and v == "":
-                customer.__dict__[k] = None
-
     def is_similar(self, customer1: Customer, customer2: Customer) -> bool:
         """
         Ελέγχει αν τα σημαντικά στοιχεία 2 πελατών είναι ίδια
+
+        Args:
+            customer1 (Customer): Πελάτης 1
+            customer2 (Customer): Πελάτης 2
+
+        Returns:
+            bool: True αν έχουν ίδια στοιχεία, αλλιώς False
         """
         return all(
             (
@@ -58,14 +61,24 @@ class CustomerModel:
 
     def get_fields(self) -> list[str]:
         """
-        Επιστρέφει τους τίτλους των στήλων
+        Επιστρέφει τους τίτλους των στήλων. Η σειρά είναι ίδια με την μέθοδο .values
+        του Customer object
+
+        Returns:
+            list[str]
         """
         return ["id", "name", "surname", "phone", "email"]
 
     def filter_by_all(self, customer: Customer) -> Customer | None:
         """
-        Ειδική συνάρτηση που ψάχνει έναν πελάτη στην βάση δεδομένων
-        χωρίς την χρήση id
+        Ειδική συνάρτηση που ψάχνει έναν πελάτη στην βάση δεδομένων χωρίς την χρήση id
+
+        Args:
+            customer (Customer): Αντικείμενο αναπαράστασης πελάτη χωρίς id. Μπορεί να
+            χρησιμοποιηθεί και με id, αλλα προτίμησε την χρήση της .get_customer_by_id
+
+        Returns:
+            Customer | None
         """
         return (
             session.query(Customer)
@@ -78,166 +91,162 @@ class CustomerModel:
             .first()
         )
 
-    def add_customer(self, customer: Customer) -> tuple[int | None, bool]:
+    def add_customer(self, customer: Customer) -> Customer:
         """
-        Δημιουργία καινούριου πελάτη. Ελέγχει αν υπάρχει ήδη ο πελάτης
-        πριν τον προσθέσει στην βάση δεδομένων. Ισότητα σημαίνει όλα τα
-        πεδία είναι ίδια.
+        Προσθήκη νέου πελάτη στην βάση δεδομένων. Το αντικείμενο δεν πρέπει να έχει
+        id. Ενημερώνει τα στοιχεία του αντικειμένου κατα την εισαγωγή για περεταίρω
+        επεξεργασία από την καλούσα.
 
-        Επιστρέφει πλειάδα tuple(customer.id, επιτυχία προσθήκης)
+        Args:
+            customer (Customer): Αναπαράσταση του πελάτη σε sql object χωρίς id.
+
+        Raises:
+            IdOnNewCustomer: Εάν η αναπαράσταση του πελάτη έχει id
+            CustomerDBError: Εάν κάτι πάει λάθος κατά την είσοδο στην βάση δεδομένων
+
+        Returns:
+            Customer: Πλήρης αναπαράσταση του πελάτη με ενεργή σύνδεση στην βάση δεδομένων.
         """
-        logger.log_info(f"Excecuting creation of {customer}")
+        logger.log_info(f"Excecuting creation of new {customer}")
 
-        # Σημαντική προεπεξεργασία ώστε τα κενά strings να μετατρέπονται
-        # σε None. Αλλιώς θεωρεί ότι το "" είναι πληροφορία και δεν δέχεται
-        # δεύτερο πελάτη με κενό τηλέφωνο η email.
+        if customer.id is not None:
+            raise IdOnNewCustomer(customer)
 
-        # Έλεγχος ύπαρξης πελάτη
-        existing_customer = self.filter_by_all(customer)
-        if existing_customer is not None:
-            logger.log_info(f"{existing_customer} already exists")
-            return existing_customer.id, False
-
-        # Προσθήκη νέου πελάτη
-        if existing_customer is None:
-            try:
-                session.add(customer)
-                session.commit()
-                session.refresh(customer)
-                self.max_id += customer.id
-                logger.log_debug(f"Assigned id={self.max_id}")
-            except Exception as e:
-                logger.log_error(str(e))
-                session.rollback()
-                return None, False
-
-        # Έλεγχος ορθής προσθήκης
-        new_customer = self.get_customer_by_id(self.max_id)
-        if new_customer is None:
-            logger.log_error("Failed to retrieve customer id after insertion")
-            raise Exception(f"DB Error on {customer}")
+        try:
+            session.add(customer)
+            session.commit()
+            session.refresh(customer)
+            self.max_id = customer.id
+            logger.log_debug(f"Assigned id={customer.id}")
+        except DatabaseError as e:
+            session.rollback()
+            raise CustomerDBError(str(e)) from e
 
         # Ενημέρωση subscriber
         self.notify_subscribers()
-        return self.max_id, True
+        return customer
 
     def delete_customer(self, customer: Customer) -> bool:
         """
-        Διαγραφή πελάτη. Επιβάλλει την ύπαρξη customer.id πριν την
-        διαγραφή.
+        Διαγράφει τον πελάτη από την βάση δεδομένων. Επιβάλλει ο πελάτης
+        να έχει id.
 
-        Επιστρέφει boolean επιτυχούς διαγραφής
+        Args:
+            customer (Customer): Πελάτης προς διαγραφή
+
+        Raises:
+            IdMissing: Εάν το customer object δεν έχει id
+            CustomerDBError: Εάν κάτι πάει λάθος κατά το transaction
+
+        Returns:
+            bool: True στην επιτυχία, αλλιώς error
         """
         logger.log_info(f"Excecuting deletion of {customer}")
 
         # Επιβολή ύπαρξης id
         if customer.id is None:
-            logger.log_warn(f"{customer} does not have an id")
-            return False
+            raise IdMissing(customer)
 
-        # Διαγραφή πελάτη. To query είναι αναγκαίο για το sqlalchemy
-        customer_to_delete = self.get_customer_by_id(customer.id)
+        # Διαγραφή πελάτη.
         try:
-            session.delete(customer_to_delete)
+            session.refresh(customer)
+            session.delete(customer)
             session.commit()
-        except Exception as e:
-            logger.log_error(str(e))
+            self.max_id = self.find_max_id()
+        except DatabaseError as e:
             session.rollback()
-            return False
-
-        # Έλεγχος επιτυχούς διαγραφής
-        # TODO: Μπορεί να αφαιρεθεί μόνο μετά από εξωνυχιστικό testing
-        deleted_customer = self.get_customer_by_id(customer.id)
-        if deleted_customer is not None:
-            logger.log_error(f"Failed to delete {customer}")
-            raise Exception(f"DB Error on {customer}")
-
-        # Ενημέρωση max_id για ευκολότερη διαχείρηση
-        self.max_id = self.find_max_id()
+            raise CustomerDBError(customer, str(e)) from e
 
         # Ενημέρωση subscriber
         self.notify_subscribers()
         return True
 
-    def update_customer(self, new_customer: Customer) -> bool:
+    def update_customer(self, customer: Customer) -> bool:
         """
         Ενημέρωση στοιχείων πελάτη. Ελέγχει αν ήδη υπάρχει ο πελάτης
         πριν τον ενημερώσει.
 
         Επιστρέφει boolean επιτυχούς ενημέρωσης
         """
-        logger.log_info(f"Excecuting update of {new_customer}")
+        logger.log_info(f"Excecuting update of {customer}")
 
-        # Αναζητεί την παλιά εγγραφή του πελάτη
-        old_customer = None
-        if new_customer.id is not None:
-            old_customer = self.get_customer_by_id(new_customer.id)
+        # Έλεγχος για ύπαρξη id
+        if customer.id is None:
+            raise IdMissing(customer)
 
-        if new_customer.id is None:
-            old_customer = self.filter_by_all(new_customer)
-
-        if old_customer is None:
-            logger.log_warn(f"{new_customer} does not exist in database")
-            return False
-
-        if self.is_similar(old_customer, new_customer):
-            logger.log_info(f"{new_customer} has not changed")
-            return False
-
-        # Ενημερώνει με τα καινούρια στοιχεία
-        old_customer.name = new_customer.name
-        old_customer.surname = new_customer.surname
-        old_customer.normalized_name = new_customer.normalized_name
-        old_customer.normalized_surname = new_customer.normalized_surname
-        old_customer.phone = new_customer.phone
-        old_customer.email = new_customer.email
-
-        # Εκτελεί την ενημέρωση στην βάση δεδομένων
         try:
-            session.commit()
-            # session.refresh(new_customer)
-        except Exception as e:
-            logger.log_error(str(e))
+            (
+                session.query(Customer)
+                .filter_by(id=customer.id)
+                .update(
+                    {
+                        Customer.name: customer.name,
+                        Customer.surname: customer.surname,
+                        Customer.normalized_name: customer.normalized_name,
+                        Customer.normalized_surname: customer.normalized_surname,
+                        Customer.phone: customer.phone,
+                        Customer.email: customer.email,
+                    }
+                )
+            )
+        except DatabaseError as e:
             session.rollback()
-            return False
-
-        updated_customer = self.get_customer_by_id(old_customer.id)
-        if updated_customer is None:
-            logger.log_error(f"Failed to update {new_customer}")
-            raise Exception(f"DB Error on {new_customer}")
+            raise CustomerDBError(customer, str(e)) from e
 
         # Ενημερώνει το cache και τους subscribers
-        # Σημαντικό να χρησιμοποιηθεί το αποτέλεσμα του νέου query και όχι ο πελάτης της παραμέτρου
         self.notify_subscribers()
         return True
 
-    def get_customer_by_id(self, id: int) -> Customer | None:
-        return session.query(Customer).filter_by(id=id).first()
-
-    def get_customer_by_email(self, email: str) -> Customer | None:
-        return session.query(Customer).filter_by(email=email).first()
-
-    def get_customer_by_phone(self, phone: str) -> Customer | None:
-        return session.query(Customer).filter_by(phone=phone).first()
-
     def add_subscriber(self, subscriber: SubscriberInterface) -> None:
+        """
+        Προσθέτει subscribers στην λίστα, προς ενημέρωση. Δες rantevou.src.controller.subscriber
+        Args:
+            subscriber (SubscriberInterface)
+        """
         logger.log_info(f"Excecuting subscription of {subscriber}")
         self.subscribers.append(subscriber)
 
     def notify_subscribers(self) -> None:
+        """
+        Ενημερώνει τους subscribers
+        """
         logger.log_info(f"Excecuting notification of {len(self.subscribers)} subscribers")
         for sub in self.subscribers:
             sub.subscriber_update()
 
+    def get_customer_by_id(self, id_: int) -> Customer | None:
+        """
+        Μέθοδος γρήγορης εύρεσης πελάτη με id
+
+        Args:
+            id_ (int)
+
+        Returns:
+            Customer | None
+        """
+        return session.query(Customer).filter_by(id=id_).first()
+
     def customer_search(self, query: str) -> list[Customer]:
         """
-        Συνάρτηση αναζήτησης πελάτη. Ψάχνει πελάτες με στοιχεία που
+        Μέθοοδος αναζήτησης πελάτη. Ψάχνει πελάτες με στοιχεία που
         εμπεριέχουν τους χαρακτήρες του query, σε σειρά.
 
         Ο χαρακτήρας % στην sqlite3 είναι wildcard. Δηλαδή εάν το
-        query είναι "νι", τότε η αναζήτηση θα είναι για "νι%" που τεριάζει
+        query είναι "νι", τότε η αναζήτηση θα είναι για "νι%" που ταιριάζει
         σε strings όπως νικος, νικη, νικολαος, νικολοπουλος, νιγιαννης κλπ
+
+        Αυτή η μέθοδος προορίζεται για στοχευμένες αναζητήσεις με σκοπό την εύρεση
+        ενός, η λίγων πελατών με συγκεκριμένο χαρακτηριστικό. Προτίνεται μόνο για
+        αναζήτηση τον μοναδικών στοιχείων όπως τηλέφωνο και email. Για πιο γενικές
+         αναζητήσεις χρησιμοποίησε την .get_customers
+
+        Args:
+            query (str): Συμβολοσειρά προς αναζήτηση
+
+        Returns:
+            list[Customer]: Αποτελέσματα αναζήτησης
         """
+
         return (
             session.query(Customer)
             .filter(
@@ -270,13 +279,24 @@ class CustomerModel:
         descending: bool = False,
     ) -> tuple[list[Customer], int]:
         """
-        Φτιάχνει το query ανάλογα με της ανάγκες του caller. Επιστρέφει
-        ένα tuple με τα αποτελέσματα και το σύνολο σελίδων
+        Βασική μέθοδος αναζήτησης πελατών στην βάση δεδομένων. Προορίζεται για χρήση
+        σε συναρτήσης που ψάχνουν μεγάλο πλήθος πελατών με έμφαση στα μη μοναδικά
+        χαρακτηριστικά όπως όνομα και επίθετο.
+
+        Args:
+            page_number (int, optional): Αριθμός σελίδας, επιστρέφει όλα τα αποτέλεσματα εάν είναι 0. Defaults to 0.
+            page_length (int, optional): Αποτελέσματα ανα σελίδα, άπειρα αποτελέσματα εάν είναι 0. Defaults to 0.
+            search_query (str, optional): Η συμβολοσειρά αναζήτησης. Εάν είναι κενή επιστρέφει όλα τα αποτελέσματα όπως περιορίζονται από τις σελίδες. Defaults to "".
+            sorted_by (str, optional): Στήλη στην οποία θα γίνει ταξινόμηση. Αν είναι άδειο τότε δεν κάνει ταξινόμηση. Defaults to "".
+            descending (bool, optional): Μόνο εάν υπάρχει στήλη ταξινόμησης, True για φθήνουσα. Defaults to False.
+
+        Returns:
+            tuple[list[Customer], int]: _description_
         """
         query = self.session.query(Customer)
 
         if search_query:
-            filter = or_(
+            filter_ = or_(
                 Customer.name.like(f"{search_query}%"),
                 Customer.surname.like(f"{search_query}%"),
                 Customer.normalized_name.like(f"{search_query}%"),
@@ -284,7 +304,7 @@ class CustomerModel:
                 Customer.email.like(f"{search_query}%"),
                 Customer.phone.like(f"{search_query}%"),
             )
-            query = query.filter(filter)
+            query = query.filter(filter_)
 
         if sorted_by:
             order_property = Customer.__dict__[sorted_by]

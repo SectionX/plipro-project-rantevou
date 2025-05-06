@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import typing as Type
 
 from . import abstract_views
-from .exceptions import *
+from .exceptions import ViewWrongDataError
 from .abstract_views import Caller
 from ..controller import get_config
 from ..controller.logging import Logger
@@ -38,7 +38,7 @@ class SearchResult(ttk.Button, Caller):
         self.draw()
 
     def open_add_screen(self):
-        self.sidepanel.select_view("add", caller="search", caller_data=(self.date, self.duration))
+        self.sidepanel.select_view("add", caller="search", caller_data=(self.date, self.user_input))
 
     def draw(self):
         minutes = self.duration.total_seconds() // 60
@@ -60,6 +60,7 @@ class SearchResultsView(abstract_views.SideView):
     name: str = "search"
     dates: Type.Sequence[tuple[datetime, timedelta]]
     result_frame: ttk.Frame
+    user_input: timedelta
 
     def __init__(self, root, *args, **kwargs):
         super().__init__(root, *args, **kwargs)

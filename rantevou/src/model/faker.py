@@ -1,4 +1,3 @@
-from unicodedata import normalize
 from .session import SessionLocal, Base, engine
 
 session = SessionLocal()

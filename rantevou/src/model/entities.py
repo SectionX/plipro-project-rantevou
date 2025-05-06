@@ -1,14 +1,21 @@
-from __future__ import annotations
+# pylint: disable=W0238
+"""
+Ορισμός των οντωτήτων της εφαρμογής ορισμένα ως sqlalchemy objects.
 
+Συμπεριλαμβάνει:
+    Appointment: Αναπαράσταση του ραντεβού
+    Customer: Αναπαράσταση του πελάτη
+"""
+
+from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime, timedelta
 from typing import Any
+from datetime import datetime, timedelta
 
-
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase, validates
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase, validates
 
 from .exceptions import ValidationError
 
@@ -40,6 +47,7 @@ class Appointment(Base):
         "Customer",
         back_populates="appointments",
         foreign_keys="[Appointment.customer_id]",
+        lazy="immediate",
     )
 
     def __str__(self) -> str:
@@ -98,12 +106,12 @@ class Appointment(Base):
             try:
                 datetime(**value)
             except ValueError as e:
-                raise ValidationError(f"Error trying to convert dict to datetime") from e
+                raise ValidationError("Error trying to convert dict to datetime") from e
 
         if isinstance(value, str):
             try:
                 return datetime.strptime(value, "%d/%m/%Y, %H:%M:%S")
-            except ValueError as e:
+            except ValueError:
                 pass
 
             try:
@@ -187,6 +195,12 @@ class Appointment(Base):
     def time_between_dates(self, date: datetime) -> timedelta:
         """
         Βοηθητική συνάρτηση υπολογισμού χρόνου με αγνωστικό χαρακτήρα
+
+        Args:
+            date (datetime): Ημερομηνία σύγκρισης
+
+        Returns:
+            timedelta: Διαφορά ημερομηνίας σύγκρισης και ημερομηνίας ραντεβού
         """
         return abs(self.date - date)
 
@@ -368,3 +382,28 @@ class Customer(Base):
             "email": self.email,
         }
         return dict_
+
+    @classmethod
+    def from_list(cls, values: list[str]) -> Customer:
+        """
+        Εναλλακτικός constructor απο λίστα.
+
+        Args:
+            values (list[str]): [id, name, surname, phone, email]
+
+        Raises:
+            ValidationError: Εαν τα στοιχεία δεν είναι στην σωστή σειρά
+
+        Returns:
+            Customer: Αναπαράσταση του πελάτη σε sqlalchemy object
+        """
+        try:
+            return Customer(
+                id=values[0],
+                name=values[1],
+                surname=values[2],
+                phone=values[3],
+                email=values[4],
+            )
+        except Exception as e:
+            raise ValidationError("Failed to construct customer from list") from e

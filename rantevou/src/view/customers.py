@@ -269,7 +269,7 @@ class ManagementBar(ttk.Frame):
         self.sidepanel.select_view("addc", caller=self, caller_data=None)
 
     def edit_customer(self):
-        self.sidepanel.select_view("editc", caller=self, caller_data=self.sheet.focus_values)
+        self.sidepanel.select_view("editc", caller=self, caller_data=Customer.from_list(self.sheet.focus_values))
 
     def del_customer(self):
         id = int(self.sheet.focus_values[0])
