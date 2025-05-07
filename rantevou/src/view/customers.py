@@ -26,7 +26,8 @@ class PopulateFromCustomer(Protocol):
     στις φόρμες ραντεβού.
     """
 
-    def populate_from_customer_tab(self, customer_data: Any | None): ...
+    def populate_from_customer_tab(self, customer_data: Any | None):
+        """Εμπεριέχει την λογική για αυτόματη εισαγωγή στοιχείων πελατών στις φόρμες"""
 
 
 class SearchBar(ttk.Frame):
@@ -54,6 +55,7 @@ class SearchBar(ttk.Frame):
     searchbar: ttk.Entry
     customers: list[Customer]
     sheet: CustomerSheet
+    key_sequence: str
 
     def __init__(self, master, sheet: CustomerSheet, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -266,13 +268,25 @@ class ManagementBar(ttk.Frame):
         self.del_button.pack(side=tk.LEFT)
 
     def add_customer(self):
+        """
+        Ζητάει από το sidepanel να εμφανίσει την φόρμα προσθήκης νέου πελάτη
+        """
         self.sidepanel.select_view("addc", caller=self, caller_data=None)
 
     def edit_customer(self):
-        self.sidepanel.select_view("editc", caller=self, caller_data=Customer.from_list(self.sheet.focus_values))
+        """
+        Ζητάει από το sidepanel να εμφανίσει την φόρμα επεξεργασίας πελάτη
+        """
+        if self.sheet.focus_values == "":
+            return
+        else:
+            self.sidepanel.select_view("editc", caller=self, caller_data=Customer.from_list(self.sheet.focus_values))
 
     def del_customer(self):
-        id = int(self.sheet.focus_values[0])
+        """
+        Ζητάει από το controller να διαγράψει τον επιλεγμένο πελάτη
+        """
+        id_ = int(self.sheet.focus_values[0])
         name = self.sheet.focus_values[1]
         surname = self.sheet.focus_values[2]
 
@@ -282,7 +296,7 @@ class ManagementBar(ttk.Frame):
         )
 
         if confirmation:
-            CustomerControl().delete_customer(Customer(id=id))
+            CustomerControl().delete_customer(Customer(id=id_))
 
 
 class Pagination(ttk.Frame):
@@ -328,6 +342,9 @@ class Pagination(ttk.Frame):
         self.sheet = sheet
 
     def go_left(self):
+        """
+        Αλλαγή σελίδας, μείωση κατα 1
+        """
         if self.current_page == 1:
             return
 
@@ -337,6 +354,9 @@ class Pagination(ttk.Frame):
         self.sheet.go_left()
 
     def go_right(self):
+        """
+        Αλλαγή σελίδας, αύξηση κατα 1
+        """
         if self.current_page == self.sheet.max_page:
             return
 
@@ -346,6 +366,9 @@ class Pagination(ttk.Frame):
         self.sheet.go_right()
 
     def reset(self):
+        """
+        Επιστροφή στις αρχικές ρυθμίσεις
+        """
         self.current_page = 1
         self.max_page = self.sheet.max_page
 

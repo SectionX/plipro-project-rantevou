@@ -13,7 +13,7 @@ from sqlalchemy.exc import DatabaseError
 from .session import session
 from .entities import Customer
 from .interfaces import SubscriberInterface
-from .exceptions import IdNotFoundInDB, IdMissing, InvalidEmail, InvalidPhone, IdOnNewCustomer, CustomerDBError
+from .exceptions import IdMissing, IdOnNewCustomer, CustomerDBError
 from ..controller.logging import Logger
 
 logger = Logger("customer-model")
@@ -152,7 +152,7 @@ class CustomerModel:
             session.refresh(customer)
             session.delete(customer)
             session.commit()
-            self.max_id = self.find_max_id()
+            self.max_id = self.__find_max_id()
         except DatabaseError as e:
             session.rollback()
             raise CustomerDBError(customer, str(e)) from e
@@ -262,7 +262,7 @@ class CustomerModel:
             .all()
         )
 
-    def find_max_id(self) -> int:
+    def __find_max_id(self) -> int:
         result = self.session.query(func.max(Customer.id)).scalar()
         if result is None:
             return 0
@@ -279,22 +279,35 @@ class CustomerModel:
         descending: bool = False,
     ) -> tuple[list[Customer], int]:
         """
-        Βασική μέθοδος αναζήτησης πελατών στην βάση δεδομένων. Προορίζεται για χρήση
-        σε συναρτήσης που ψάχνουν μεγάλο πλήθος πελατών με έμφαση στα μη μοναδικά
+        Βασική μέθοδος αναζήτησης πελατών στην βάση δεδομένων.
+
+        Χτίζει το query τμηματικά βάση των παραμέτρων. Προορίζεται για χρήση σε
+        συναρτήσης που ψάχνουν μεγάλο πλήθος πελατών με έμφαση στα μη μοναδικά
         χαρακτηριστικά όπως όνομα και επίθετο.
 
         Args:
-            page_number (int, optional): Αριθμός σελίδας, επιστρέφει όλα τα αποτέλεσματα εάν είναι 0. Defaults to 0.
-            page_length (int, optional): Αποτελέσματα ανα σελίδα, άπειρα αποτελέσματα εάν είναι 0. Defaults to 0.
-            search_query (str, optional): Η συμβολοσειρά αναζήτησης. Εάν είναι κενή επιστρέφει όλα τα αποτελέσματα όπως περιορίζονται από τις σελίδες. Defaults to "".
-            sorted_by (str, optional): Στήλη στην οποία θα γίνει ταξινόμηση. Αν είναι άδειο τότε δεν κάνει ταξινόμηση. Defaults to "".
-            descending (bool, optional): Μόνο εάν υπάρχει στήλη ταξινόμησης, True για φθήνουσα. Defaults to False.
+            page_number (int, optional):
+            Αριθμός σελίδας, επιστρέφει όλα τα αποτέλεσματα εάν είναι 0. Defaults to 0.
+
+            page_length (int, optional):
+            Αποτελέσματα ανα σελίδα, άπειρα αποτελέσματα εάν είναι 0. Defaults to 0.
+
+            search_query (str, optional):
+            Η συμβολοσειρά αναζήτησης. Αάπειρα αποτελέσματα εάν είναι κενή. Defaults to "".
+
+            sorted_by (str, optional):
+            Στήλη στην οποία θα γίνει ταξινόμηση. Αγνοεί αν είναι άδειο. Defaults to "".
+
+            descending (bool, optional):
+            Μόνο εάν υπάρχει στήλη ταξινόμησης, True για φθήνουσα. Defaults to False.
 
         Returns:
-            tuple[list[Customer], int]: _description_
+            tuple[list[Customer], int]:
+            Πλειάδα με την λίστα των πελατών και το σύνολο των σελίδων
         """
         query = self.session.query(Customer)
 
+        # Δημιουργία query αναζήτησης
         if search_query:
             filter_ = or_(
                 Customer.name.like(f"{search_query}%"),
@@ -306,6 +319,7 @@ class CustomerModel:
             )
             query = query.filter(filter_)
 
+        # Δημιουργία query ταξινόμησης
         if sorted_by:
             order_property = Customer.__dict__[sorted_by]
             if descending:
@@ -314,6 +328,7 @@ class CustomerModel:
 
         count = query.count()
 
+        # Δημιουργία query σελιδοποίησης
         if page_number > 0 and page_length > 0:
             query = query.limit(page_length)
             query = query.offset((page_number - 1) * page_length)
@@ -323,4 +338,5 @@ class CustomerModel:
         else:
             count = ceil(count / page_length)
 
+        logger.log_info(f"Executing {query}")
         return query.all(), count

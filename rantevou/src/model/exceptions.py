@@ -1,3 +1,4 @@
+# pylint: disable=E0203
 """
 Module με όλα τα exceptions που αφορούν τα μοντέλα.
 
@@ -45,10 +46,10 @@ class AppointmentModelException(ModelException):
 
     logger = appointment_logger
 
-    def __init__(self, appointment=None, db_exception=None, *args):
+    def __init__(self, appointment, db_exception=None, **kwargs):
         if db_exception is not None:
             self.level = "ERROR"
-        super().__init__(*args)
+        super().__init__(*kwargs.values())
         self.appointment = appointment
         self.db_exception = db_exception
 

@@ -384,12 +384,12 @@ class Customer(Base):
         return dict_
 
     @classmethod
-    def from_list(cls, values: list[str]) -> Customer:
+    def from_list(cls, values: list[Any]) -> Customer:
         """
         Εναλλακτικός constructor απο λίστα.
 
         Args:
-            values (list[str]): [id, name, surname, phone, email]
+            values (list[Any]): [id, name, surname, phone, email]
 
         Raises:
             ValidationError: Εαν τα στοιχεία δεν είναι στην σωστή σειρά
@@ -400,10 +400,10 @@ class Customer(Base):
         try:
             return Customer(
                 id=values[0],
-                name=values[1],
-                surname=values[2],
-                phone=values[3],
-                email=values[4],
+                name=str(values[1]),
+                surname=str(values[2]),
+                phone=str(values[3]),
+                email=str(values[4]),
             )
         except Exception as e:
             raise ValidationError("Failed to construct customer from list") from e

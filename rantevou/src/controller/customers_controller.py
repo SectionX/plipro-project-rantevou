@@ -53,7 +53,11 @@ class CustomerControl:
 
     def get_customer_by_email(self, email: str) -> Customer | None:
         logger.log_info(f"Requesting customer search by email {email}")
-        return self.model.get_customer_by_email(email)
+        customers = self.search(email)
+        if customers and len(customers) > 0:
+            return customers[0]
+        else:
+            return None
 
     def add_subscription(self, node) -> None:
         logger.log_info(f"Requesting subscription for node {node}")
@@ -61,6 +65,4 @@ class CustomerControl:
 
     def search(self, string: str) -> list[Customer]:
         logger.log_info(f"Requesting customer search with query: {string}")
-        if string == "":
-            return self.model.customers
         return self.model.customer_search(string)

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import NamedTuple
+from enum import Enum
 
 from . import get_config
 from .logging import Logger
 from .customers_controller import CustomerControl
 from ..model.entities import Appointment, Customer
 from ..model.appointment import AppointmentModel
+from ..model.exceptions import *
 
 cfg = get_config()["view_settings"]
 PERIOD = timedelta(hours=cfg["working_hours"] // cfg["rows"])
@@ -34,7 +35,15 @@ class AppointmentControl:
 
     def get_appointments(self) -> dict[int, list[Appointment]]:
         """
-        Επιστρέφει όλες τις εγγραφές από το table Appointments
+        Επιστρέφει όλες τις εγγραφές από το table Appointments που υπάρχουν στο cache.
+
+        Προσοχή!
+        Αυτή η συνάρτηση προορίζεται για παραγωγή διαγνωστικών και στατιστικών στοιχείων
+        που αφορούν περισσότερο τις εσωτερικές λειτουργίες του προγράμματος. Για γενική
+        χρήση προτίνεται η ".get_appointments_from_to_date"
+
+        Returns:
+            dict[int, list[Appointment]]
         """
         logger.log_info("Requesting list of appointments")
         return self.model.get_appointments()
@@ -58,8 +67,8 @@ class AppointmentControl:
         cc = CustomerControl()
         if customer.id is None:
             logger.log_debug("Creating appointment and adding customer")
-            customer_id, _ = cc.create_customer(customer)
-            appointment.customer_id = customer_id  # type: ignore
+            customer = cc.create_customer(customer)
+            appointment.customer_id = customer.id  # type: ignore
             return self.model.add_appointment(appointment)
 
         if customer.id is not None:
@@ -71,12 +80,29 @@ class AppointmentControl:
         logger.log_warn("Request Failure")
         return None
 
-    def delete_appointment(self, appointment: Appointment) -> bool:
+    def delete_appointment(self, appointment: Appointment) -> tuple[bool, str]:
         """
-        Σβήνει μια εγγραφή από το table Appointments
+        Σβήνει ένα ραντεβού από την βάση δεδομένων. Το ραντεβού πρέπει να έχει id,
+        να υπάρχει στην βάση δεδομένων και τα στοιχεία του να είναι ίδια με της
+        βάσης δεδομένων.
+
+        Args:
+            appointment (Appointment): Ραντεβού προς διαγραφή
+
+        Returns:
+            tuple[bool, str]: Boolean ορθής ολοκλήρωσης και λόγος αποτυχίας
         """
         logger.log_info(f"Requesting deletion for {appointment}")
-        return self.model.delete_appointment(appointment)
+        try:
+            return self.model.delete_appointment(appointment), "ok"
+        except IdMissing:
+            return False, "Το ραντεβού δεν έχει id"
+        except WrongAppointment:
+            return False, f"Τα στοιχεία του ραντεβού με id {appointment.id} δεν είναι σωστά"
+        except IdNotFoundInDB:
+            return False, f"Το ραντεβού με id {appointment.id} δεν υπάρχει"
+        except AppointmentDBError as e:
+            return False, str(e.__doc__)
 
     def update_appointment(
         self,
@@ -84,7 +110,23 @@ class AppointmentControl:
         customer: Customer | None = None,
     ) -> bool:
         """
-        Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments
+        Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments. Επίσης
+        ανανεώνει τα στοιχεία των αντικειμένων που δώθηκαν ως παράμετροι
+
+        Args:
+            appointment (Appointment): _description_
+            customer (Customer | None, optional): _description_. Defaults to None.
+
+        Returns:
+            tuple[int, str]: κωδικός επιτυχίας και λόγος αποτυχίας
+            Οι κωδικοί είναι
+            - 0. Επιτυχής ανανέωση ραντεβού και πελάτη
+            - 1. Επιτυχής ανανέωση ραντεβού και επιτυχής προσθήκη νέου πελάτη
+            - 1. Επιτυχής ανανέωση ραντεβού χωρίς ανανέωση πελάτη
+            - 2. Επιτυχής ανανέωση ραντεβού με αποτυχία ανανέωσης πελάτη
+            - 3. Αποτυχία ανανέωσης ραντεβού
+            - 1. Επιτυχής ανανέωση ραντεβού με αποτυχίας ανανέωσης πελάτη
+            - 2. Αποτυχία
         """
         logger.log_info(f"Requesting update for {appointment} for {customer}")
 
@@ -95,8 +137,8 @@ class AppointmentControl:
         cc = CustomerControl()
         if customer.id is None:
             logger.log_debug("Updating appointment and adding customer")
-            customer_id, _ = cc.create_customer(customer)
-            return self.model.update_appointment(appointment, customer_id)
+            customer = cc.create_customer(customer)
+            return self.model.update_appointment(appointment, customer.id)
 
         if customer.id is not None:
             logger.log_debug("Updating appointment and customer")

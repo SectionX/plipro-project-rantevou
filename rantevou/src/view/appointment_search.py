@@ -88,16 +88,12 @@ class SearchResultsView(abstract_views.SideView):
         if not isinstance(caller_data[0][0], Type.Sequence):
             raise ViewWrongDataError(self, caller, caller_data)
 
-        if not isinstance(caller_data[0][0][0], datetime):
-            raise ViewWrongDataError(self, caller, caller_data)
-
-        if not isinstance(caller_data[0][0][1], timedelta):
-            raise ViewWrongDataError(self, caller, caller_data)
-
         self.dates, self.user_input = caller_data
 
         self.result_frame.destroy()
         self.result_frame = ttk.Frame(self)
         for date, duration in self.dates:
+            if not (isinstance(date, datetime) and isinstance(duration, timedelta)):
+                raise ViewWrongDataError(self, caller, caller_data)
             SearchResult(self.result_frame, date=date, duration=duration, user_input=self.user_input).pack(fill="x")
         self.result_frame.pack(fill="x")
