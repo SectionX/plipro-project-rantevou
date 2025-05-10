@@ -8,8 +8,9 @@ from typing import Any, Literal, Protocol, runtime_checkable
 from .abstract_views import AppFrame
 from .sidepanel import SidePanel
 from .shared import set_customer
-from ..model.entities import Customer
+from ..model.entities import Customer, Appointment
 from ..controller.customers_controller import CustomerControl
+from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
 from ..controller.subscriber import SubscriberInterface
 from ..controller import get_config
@@ -151,6 +152,38 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
         self.sorted_by = ""
         self.descending = False
 
+    def switch(self, mode: Literal["appointment", "customer"]):
+        """
+        Αλλάζει τα ονόματα των στηλών για να εμφανίσει τα ραντεβού για τον επιλεγμένο πελάτη
+
+        Args:
+            mode: Literal['appointment', 'customer']
+        """
+        if mode == "appointment":
+            self.heading("name", text="Date")
+            self.heading("surname", text="Duration")
+            self.heading("phone", text="")
+            self.heading("email", text="")
+
+        elif mode == "customer":
+            self.heading("name", text="Name")
+            self.heading("surname", text="Surname")
+            self.heading("phone", text="Phone")
+            self.heading("email", text="Email")
+
+    def populate_sheet_appointment(self, appointments: list[Appointment]):
+        """
+        Εμφανίζει ραντεβού
+
+        Args:
+            appointments (list[Appointment]): _description_
+        """
+        self.switch("appointment")
+        self.delete(*self.get_children())
+        for appointment in reversed(appointments):
+            _, date, _, duration, *_ = appointment.values
+            self.insert("", "end", values=("", date, duration))
+
     def get_customer_page(self) -> tuple[list[Customer], int]:
         """
         Βοηθητική συνάρτηση αρχικοποίησης.
@@ -198,6 +231,7 @@ class CustomerSheet(ttk.Treeview, SubscriberInterface):
                 descending=self.descending,
             )
 
+        self.switch("customer")
         self.delete(*self.get_children())
         for customer in self.customers:
             values = customer.values
@@ -261,11 +295,13 @@ class ManagementBar(ttk.Frame):
         self.add_button = ttk.Button(self.button_frame, text="Add", command=self.add_customer)
         self.edit_button = ttk.Button(self.button_frame, text="Edit", command=self.edit_customer)
         self.del_button = ttk.Button(self.button_frame, text="Delete", command=self.del_customer)
+        self.show_button = ttk.Button(self.button_frame, text="Show", command=self.show_appointments)
 
         self.button_frame.pack()
         self.add_button.pack(side=tk.LEFT)
         self.edit_button.pack(side=tk.LEFT)
         self.del_button.pack(side=tk.LEFT)
+        self.show_button.pack(side=tk.LEFT)
 
     def add_customer(self):
         """
@@ -297,6 +333,16 @@ class ManagementBar(ttk.Frame):
 
         if confirmation:
             CustomerControl().delete_customer(Customer(id=id_))
+
+    def show_appointments(self):
+        if self.show_button["text"] == "Show" and self.sheet.focus_values != "":
+            self.show_button["text"] = "Back"
+            customer = CustomerControl().merge(Customer.from_list(self.sheet.focus_values))
+            self.sheet.populate_sheet_appointment(customer.appointments)
+
+        elif self.show_button["text"] == "Back":
+            self.show_button["text"] = "Show"
+            self.sheet.populate_sheet()
 
 
 class Pagination(ttk.Frame):

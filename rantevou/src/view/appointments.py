@@ -1,23 +1,26 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, IntVar
 from datetime import datetime, timedelta
-from datetime import timedelta
 from typing import Any
 from itertools import chain
 from collections import deque
+import os
+import sys
+import webbrowser
+import openpyxl
+import subprocess
 
 from .abstract_views import AppFrame
-from .sidepanel import SidePanel
 
 from ..controller.appointments_controller import AppointmentControl
-from ..controller.customers_controller import CustomerControl
 from ..controller.logging import Logger
 from ..controller.subscriber import SubscriberInterface
+from ..controller.mailer import Mailer
 from ..controller import get_config
 
-from ..model.entities import Appointment
+from ..model.entities import Appointment, Customer
 
 logger = Logger("AppointmentsTab")
 cfg: dict[str, Any] = get_config()["view_settings"]
@@ -70,10 +73,124 @@ class GridNavBar(ttk.Frame):
 
     def __init__(self, root: Grid, *args, **kwargs):
         super().__init__(root, *args, **kwargs)
-        self.move_left = ttk.Button(self, text="Previous", command=root.move_left, style="low.TButton")
-        self.move_right = ttk.Button(self, text="Next", command=root.move_right, style="low.TButton")
+        self.now = datetime.now()
+        self.year = IntVar()
+        self.month = IntVar()
+        self.day = IntVar()
+        self.set_date(timedelta(0))
+
+        self.move_left = ttk.Button(
+            self,
+            text="Previous",
+            command=lambda: self.set_date(timedelta(days=-1)) or root.move_left(1),
+            style="low.TButton",
+        )
+        self.move_right = ttk.Button(
+            self,
+            text="Next",
+            command=lambda: self.set_date(timedelta(days=1)) or root.move_right(1),
+            style="low.TButton",
+        )
+
+        self.move_to_year = ttk.Entry(self, textvariable=self.year, width=4)
+        self.move_to_month = ttk.Entry(self, textvariable=self.month, width=2)
+        self.move_to_day = ttk.Entry(self, textvariable=self.day, width=2)
+
+        for widget in [self.move_to_year, self.move_to_month, self.move_to_day]:
+            widget.bind("<Key>", lambda x: x.keysym == "Return" and root.move_date(self.year, self.month, self.day))
+
+        self.send_email_button = ttk.Button(self, text="@", command=self.send_email)
+        self.print_button = ttk.Button(self, text="Print", command=self.print)
+        self.export_excel = ttk.Button(self, text="Export", command=self.export_to_worksheet)
+
         self.move_right.pack(side=tk.RIGHT)
         self.move_left.pack(side=tk.RIGHT)
+        self.move_to_day.pack(side=tk.LEFT)
+        self.move_to_month.pack(side=tk.LEFT)
+        self.move_to_year.pack(side=tk.LEFT)
+        self.send_email_button.pack(side=tk.LEFT)
+        self.print_button.pack(side=tk.LEFT)
+        self.export_excel.pack(side=tk.LEFT)
+
+    def set_date(self, delta: timedelta):
+        self.now += delta
+        self.year.set(self.now.year)
+        self.month.set(self.now.month)
+        self.day.set(self.now.day)
+
+    def _get_appointments_from_entry(self) -> list[Appointment]:
+        start_date = datetime(year=self.year.get(), month=self.month.get(), day=self.day.get())
+        return AppointmentControl().get_appointments_from_to_date(start=start_date, end=start_date + timedelta(days=1))
+
+    def send_email(self):
+        appointments = self._get_appointments_from_entry()
+        mailer = Mailer()
+        mailer.send_email(appointments, debug=True)
+
+    def export_to_worksheet(self):
+        appointments = self._get_appointments_from_entry()
+        workbook = openpyxl.workbook.Workbook()
+        workbook.create_sheet("Ραντεβού", 0)
+        sheet = workbook["Ραντεβού"]
+
+        for i, appointment in enumerate(appointments, 1):
+            data = []
+            data.extend(appointment.values)
+            customer = appointment.customer
+            if customer:
+                data.extend(customer.values)
+
+            for j, entry in enumerate(data, 1):
+                sheet.cell(i, j, str(entry))
+
+        workbook.save("tmp.xlsx")
+        if sys.platform.lower().startswith("linux"):
+            try:
+                subprocess.run(["xdg-open", "tmp.xlsx"], check=True)
+            except subprocess.CalledProcessError:
+                try:
+                    subprocess.run(["open", "tmp.xlsx"], check=True)
+                except subprocess.CalledProcessError:
+                    logger.log_error(f"Failed to open xlsx reader in platform {sys.platform}")
+
+        elif sys.platform.lower().startswith("win"):
+            try:
+                subprocess.run(["start", "tmp.xlsx"], check=True)
+            except subprocess.CalledProcessError:
+                logger.log_error(f"Failed to open xlsx reader in platform {sys.platform}")
+
+        elif sys.platform.lower().startswith("darwin"):
+            try:
+                subprocess.run(["open", "tmp.xlsx"], check=True)
+            except subprocess.CalledProcessError:
+                logger.log_error(f"Failed to open xlsx reader in platform {sys.platform}")
+
+    def print(self):
+        appointments = self._get_appointments_from_entry()
+        buffer: list[str] = [f"<p>{self.day.get():02d}/{self.month.get():02d}/{self.year.get()}<br><table>"]
+        for appointment in appointments:
+            hour = appointment.date.hour
+            minute = appointment.date.minute
+            duration = int(appointment.duration.total_seconds() // 60)
+            string = f"<tr><td>{hour:02d}:{minute:02d}</td><td>{duration:4}</td>"
+            customer: Customer = appointment.customer
+            name = "---"
+            surname = "---"
+            phone = "---"
+            email = "---"
+            if customer:
+                _, name, surname, phone, email = (value or "---" for value in customer.values)
+            string += f"<td>{name}</td><td>{surname}</td><td>{phone}</td><td>{email}</td><tr>"
+
+            buffer.append(string)
+
+        buffer.append("</p><script>print()</script>")
+        filename = f"tmp{str(datetime.now())}.html"
+        with open(filename, "w") as f:
+            f.writelines(buffer)
+
+        webbrowser.open(filename)
+        self.after(10000, lambda: os.remove(filename))
 
 
 class Grid(ttk.Frame):
@@ -108,13 +225,25 @@ class Grid(ttk.Frame):
             )
             self.columns[i].pack(side=tk.LEFT, fill="both", expand=True, pady=10)
 
-    def move_left(self):
+    def move_left(self, step=1):
+        self.start_date -= timedelta(days=step)
         for column in self.columns:
-            column.move_left()
+            column.move_left(step)
 
-    def move_right(self):
+    def move_right(self, step=1):
+        self.start_date += timedelta(days=step)
         for column in self.columns:
-            column.move_right()
+            column.move_right(step)
+
+    def move_date(self, year: IntVar, month: IntVar, day: IntVar):
+        date = datetime(
+            year=year.get(), month=month.get(), day=day.get(), hour=self.start_date.hour, minute=self.start_date.minute
+        )
+        diff = self.start_date - date
+        if diff > timedelta(0):
+            self.move_left(step=int(abs(diff).total_seconds() // (3600 * 24)))
+        else:
+            self.move_right(step=int(abs(diff).total_seconds() // (3600 * 24)))
 
 
 class GridHeader(ttk.Label):
@@ -128,12 +257,12 @@ class GridHeader(ttk.Label):
     def draw(self):
         self.config(text=self.date.strftime("%d/%m"))
 
-    def move_left(self):
-        self.date -= timedelta(days=1)
+    def move_left(self, step=1):
+        self.date -= timedelta(days=step)
         self.draw()
 
-    def move_right(self):
-        self.date += timedelta(days=1)
+    def move_right(self, step=1):
+        self.date += timedelta(days=step)
         self.draw()
 
 
@@ -190,15 +319,15 @@ class GridColumn(ttk.Frame):
         for row in self.rows:
             row.pack(fill="both", expand=True, padx=3, pady=3)
 
-    def move_left(self):
-        self.header.move_left()
+    def move_left(self, step=1):
+        self.header.move_left(step)
         for row in self.rows:
-            row.move_left()
+            row.move_left(step)
 
-    def move_right(self):
-        self.header.move_right()
+    def move_right(self, step=1):
+        self.header.move_right(step)
         for row in self.rows:
-            row.move_right()
+            row.move_right(step)
 
 
 class GridCell(ttk.Frame, SubscriberInterface):
@@ -284,18 +413,18 @@ class GridCell(ttk.Frame, SubscriberInterface):
         text = f"Ραντεβού:{appointment_count}"
         self.text.config(text=text)
 
-    def move_left(self):
-        self.period_start -= timedelta(days=1)
-        self.period_end -= timedelta(days=1)
+    def move_left(self, step):
+        self.period_start -= timedelta(days=step)
+        self.period_end -= timedelta(days=step)
         self.group_index = AppointmentControl().get_index_from_date(
             self.period_start, AppointmentsTab.start_date, self.period_duration
         )
         self.cache = None
         self.draw()
 
-    def move_right(self):
-        self.period_start += timedelta(days=1)
-        self.period_end += timedelta(days=1)
+    def move_right(self, step):
+        self.period_start += timedelta(days=step)
+        self.period_end += timedelta(days=step)
         self.group_index = AppointmentControl().get_index_from_date(
             self.period_start, AppointmentsTab.start_date, self.period_duration
         )

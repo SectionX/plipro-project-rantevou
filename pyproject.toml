@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 [project]
 name = "rantevou"
 version = "0.1"
-dependencies = ["sqlalchemy", "flask"]
+dependencies = ["sqlalchemy", "flask", "openpyxl"]
 requires-python = ">=3.8"
 authors = [
 {name = "YourName", email = "Youremail@mail.tld"},

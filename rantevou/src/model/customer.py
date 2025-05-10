@@ -340,3 +340,20 @@ class CustomerModel:
 
         logger.log_info(f"Executing {query}")
         return query.all(), count
+
+    def merge(self, customer: Customer) -> Customer:
+        """
+        Συνδέει το αντικείμενο με το session
+
+        Μετατρέπει την κατάσταση του από transient σε peristent
+        Αυτό επιτρέπει την χρήση του Customer().appointments χωρίς
+        να χρειάζεται ξεχωριστή αναζήτηση στην βάση δεδομένων.
+
+        Args:
+            customer (Customer): Transient object
+
+        Returns:
+            Customer: Persistent object
+        """
+
+        return self.session.merge(customer)

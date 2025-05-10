@@ -43,7 +43,7 @@ def generate_fake_appointment_data(n):
         if i % 5 == 0:
             customer_id = None
         else:
-            customer_id = randint(1, 300)
+            customer_id = randint(1, n)
 
         is_alerted = bool(randint(0, 1))
         yield Appointment(

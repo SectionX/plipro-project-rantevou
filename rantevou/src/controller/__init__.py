@@ -2,7 +2,7 @@ import json
 import pathlib
 
 
-PATH = pathlib.Path(__file__).parent.parent.parent.parent / "settings.json"
+PATH = pathlib.Path(__file__).parent.parent.parent / "data" / "settings.json"
 
 cfg = None
 

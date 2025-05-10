@@ -66,3 +66,16 @@ class CustomerControl:
     def search(self, string: str) -> list[Customer]:
         logger.log_info(f"Requesting customer search with query: {string}")
         return self.model.customer_search(string)
+
+    def merge(self, customer: Customer) -> Customer:
+        """
+        Συνδέει το αντικείμενο στο ενεργό session
+
+        Args:
+            customer (Customer)
+
+        Returns:
+            Customer: Persistent sqlalchemy object
+        """
+        logger.log_info(f"Refreshing object's connection to db")
+        return self.model.merge(customer)
