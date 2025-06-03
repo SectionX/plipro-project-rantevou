@@ -9,8 +9,9 @@ from collections import deque
 import os
 import sys
 import webbrowser
-import openpyxl
 import subprocess
+
+from openpyxl import Workbook
 
 from .abstract_views import AppFrame
 
@@ -129,12 +130,12 @@ class GridNavBar(ttk.Frame):
 
     def export_to_worksheet(self):
         appointments = self._get_appointments_from_entry()
-        workbook = openpyxl.workbook.Workbook()
+        workbook = Workbook()
         workbook.create_sheet("Ραντεβού", 0)
         sheet = workbook["Ραντεβού"]
 
         for i, appointment in enumerate(appointments, 1):
-            data = []
+            data: list[Any] = []
             data.extend(appointment.values)
             customer = appointment.customer
             if customer:
@@ -213,13 +214,11 @@ class Grid(ttk.Frame):
         for i in range(7):
             start_date = self.start_date + timedelta(days=i)
             end_date = start_date + timedelta(hours=cfg["working_hours"])
-            start_index = AppointmentControl().get_index_from_date(start_date, self.start_date, self.period_duration)
             self.columns.append(
                 GridColumn(
                     self,
                     start_date=start_date,
                     end_date=end_date,
-                    start_index=start_index,
                     period_duration=self.period_duration,
                 )
             )
@@ -295,7 +294,6 @@ class GridColumn(ttk.Frame):
         root,
         start_date,
         end_date,
-        start_index,
         period_duration,
         *args,
         **kwargs,
@@ -304,14 +302,13 @@ class GridColumn(ttk.Frame):
         self.start_date = start_date
         self.end_date = end_date
         self.period_duration = period_duration
-        self.start_index = start_index
         self.header = GridHeader(self, start_date)
         self.rows = []
 
         start = start_date
         i = 0
         while start < end_date:
-            self.rows.append(GridCell(self, start_index + i, start, period_duration))
+            self.rows.append(GridCell(self, start, period_duration))
             i += 1
             start += period_duration
 
@@ -331,7 +328,6 @@ class GridColumn(ttk.Frame):
 
 
 class GridCell(ttk.Frame, SubscriberInterface):
-    group_index: int
     period_start: datetime
     period_duration: timedelta
     current_focus = None
@@ -339,7 +335,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
     def __init__(
         self,
         root,
-        appointment_group_index: int,
         period_start: datetime,
         period_duration: timedelta,
         *args,
@@ -348,7 +343,6 @@ class GridCell(ttk.Frame, SubscriberInterface):
         super().__init__(root, *args, **kwargs)
         SubscriberInterface.__init__(self)
 
-        self.group_index = appointment_group_index
         self.period_start = period_start
         self.period_duration = period_duration
         self.period_end = period_start + period_duration
@@ -416,18 +410,12 @@ class GridCell(ttk.Frame, SubscriberInterface):
     def move_left(self, step):
         self.period_start -= timedelta(days=step)
         self.period_end -= timedelta(days=step)
-        self.group_index = AppointmentControl().get_index_from_date(
-            self.period_start, AppointmentsTab.start_date, self.period_duration
-        )
         self.cache = None
         self.draw()
 
     def move_right(self, step):
         self.period_start += timedelta(days=step)
         self.period_end += timedelta(days=step)
-        self.group_index = AppointmentControl().get_index_from_date(
-            self.period_start, AppointmentsTab.start_date, self.period_duration
-        )
         self.draw()
         self.cache = None
 

@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rantevou"
-version = "0.1"
-dependencies = ["sqlalchemy", "flask", "openpyxl", "pydantic"]
-requires-python = ">=3.8"
+version = "0.9.0"
+dependencies = ["sqlalchemy", "flask", "openpyxl", "types-openpyxl", "pydantic"]
+requires-python = ">=3.10"
 authors = [
-{name = "YourName", email = "Youremail@mail.tld"},
+{name = "Ηλίας Στουραΐτης", email = "std168326@ac.eap.gr"},
 ]
 maintainers = []
 description = "Add a description of your project"
@@ -26,11 +26,11 @@ packages = ["rantevou", "rantevou.src"]
 [project.optional-dependencies]
 
 [project.urls]
-Homepage = ""
-Documentation = ""
-Repository = ""
-"Bug Tracker" = ""
-Changelog = ""
+Homepage = "https://..."
+Documentation = "https://..."
+Repository = "https://..."
+"Bug Tracker" = "https://..."
+Changelog = "https://..."
 
 [project.scripts]
 rantevou = "rantevou:__main__.main"

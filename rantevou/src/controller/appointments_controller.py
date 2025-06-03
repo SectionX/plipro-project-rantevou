@@ -9,8 +9,10 @@ from .customers_controller import CustomerControl
 from ..model.entities import Appointment, Customer
 from ..model.appointment import AppointmentModel
 from ..model.exceptions import *
+from ..model.interfaces import SubscriberInterface
 
 cfg = get_config()["view_settings"]
+MIN_DURATION = cfg["minimum_appointment_duration"]
 PERIOD = timedelta(hours=cfg["working_hours"] // cfg["rows"])
 
 logger = Logger("appointments_controller")
@@ -110,12 +112,13 @@ class AppointmentControl:
         customer: Customer | None = None,
     ) -> tuple[bool, str]:
         """
-        Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments. Επίσης
-        ανανεώνει τα στοιχεία των αντικειμένων που δώθηκαν ως παράμετροι
+        Μεταβάλλει τα στοιχεία ενός ραντεβού και του σχετικού πελάτη εάν υπάρχει.
+        Εάν το ραντεβού δεν έχει σχετικό πελάτη και δωθούν στοιχεία αυτού, τότε
+        δημιουργεί καινούριο πελάτη.
 
         Args:
-            appointment (Appointment): _description_
-            customer (Customer | None, optional): _description_. Defaults to None.
+            appointment (Appointment): Ραντεβού προς αλλαγή
+            customer (Customer | None, optional): Πελάτης προς αλλαγή ή προσθήκη. Defaults to None.
 
         Returns:
             tuple[bool, str]: κωδικός επιτυχίας και λόγος αποτυχίας
@@ -142,19 +145,40 @@ class AppointmentControl:
 
     def get_appointment_by_id(self, id: int) -> Appointment | None:
         """
-        Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
+        Αναζήτηση ραντεβού με βάση το id
+
+        Args:
+            id (int): Id του ραντεβού που μας ενδιαφέρει
+
+        Returns:
+            appointment (Appointment | None): Εάν δεν βρεθεί το ραντεβού επιστρέφει None
         """
         logger.log_info(f"Requesting appointment by {id=}")
         return self.model.get_appointment_by_id(id)
 
     def get_appointment_by_date(self, date: datetime) -> Appointment | None:
         """
-        Επιστρέφει μια εγγραφή με βάση το id από το table Appointments
+        Αναζήτηση ραντεβού με βάση την ημερομηνία
+
+        Args:
+            date (datetime): Ημερομηνία του ραντεβού που μας ενδιαφέρει
+
+        Returns:
+            appointment (Appointment | None): Εάν δεν βρεθεί το ραντεβού επιστρέφει None
         """
         logger.log_info(f"Requesting appointment by {date=}")
         return self.model.get_appointment_by_date(date)
 
-    def add_subscription(self, subscriber):
+    def add_subscription(self, subscriber: SubscriberInterface):
+        """
+        Προσθήκη νέας συνδρομής στο μοντέλο ραντεβού. Το αντικείμενο θα πρέπει
+        να υλοποιεί μια μέθοδο "subscriber_update" που καλείται από το μοντέλο
+        κάθε φορά που γίνεται οποιαδήποτε αλλαγή στην βάση δεδομένων που αφορά
+        τα ραντεβού.
+
+        Args:
+            subscriber (SubscriberInterface)
+        """
         logger.log_info(f"Requesting subscription for {subscriber}")
         self.model.add_subscriber(subscriber)
 
@@ -162,15 +186,51 @@ class AppointmentControl:
         self,
         start_date: datetime = datetime.now(),
         end_date: datetime = datetime.now() + timedelta(days=1),
-        minumum_free_period: timedelta = timedelta(minutes=20),  # TODO import settings
+        minumum_free_period: timedelta = timedelta(minutes=MIN_DURATION),
     ) -> list[tuple[datetime, timedelta]]:
+        """
+        Αναζήτηση σε μια χρονική περίοδο για ελεύθερο χρόνο μεταξύ ραντεβού
+
+        Args:
+            start_date (datetime, optional): Αρχική ημερομηνία. Defaults to datetime.now().
+            end_date (datetime, optional): Τελική ημερομηνία. Defaults to datetime.now()+timedelta(days=1).
+            minumum_free_period (timedelta, optional): Επιθυμιτή διάρκεια ραντεβού. Defaults to timedelta(minutes=MIN_DURATION).
+
+        Returns:
+            list[tuple[datetime, timedelta]]: Λίστα με ημερομηνίες και διάρκεια κενής περιόδου
+        """
+
         logger.log_debug(f"Requesting list of time between appointments for {start_date=}, {minumum_free_period=}")
         return self.model.get_time_between_appointments(start_date, end_date, minumum_free_period)
 
-    def get_index_from_date(self, date: datetime, start_date: datetime, period_duration: timedelta) -> int:
-        logger.log_debug(f"Requesting calculation of group index for {date=}, {start_date=}, {period_duration=}")
-        return (date - start_date) // period_duration
+    # def get_index_from_date(self, date: datetime, start_date: datetime, period_duration: timedelta) -> int:
+    #     """
+    #     get_index_from_date _summary_
 
-    def get_appointments_from_to_date(self, start: datetime, end: datetime):
+    #     _extended_summary_
+
+    #     Args:
+    #         date (datetime): _description_
+    #         start_date (datetime): _description_
+    #         period_duration (timedelta): _description_
+
+    #     Returns:
+    #         int: _description_
+    #     """
+    #     logger.log_debug(f"Requesting calculation of group index for {date=}, {start_date=}, {period_duration=}")
+    #     return (date - start_date) // period_duration
+
+    def get_appointments_from_to_date(self, start: datetime, end: datetime) -> list[Appointment]:
+        """
+        Αναζήτηση όλων των ραντεβού σε μια χρονική περίοδο.
+
+        Args:
+            start (datetime): Αρχική ημερομηνία
+            end (datetime): Τελική ημερομηνία
+
+        Returns:
+            list[Appointment]: Λίστα με ραντεβού εντός της χρονικής περιόδου
+        """
+
         logger.log_debug(f"Requesting query of appointments from {start} to {end}")
         return self.model.get_appointments_from_to_date(start, end)
