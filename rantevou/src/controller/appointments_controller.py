@@ -108,7 +108,7 @@ class AppointmentControl:
         self,
         appointment: Appointment,
         customer: Customer | None = None,
-    ) -> bool:
+    ) -> tuple[bool, str]:
         """
         Μεταβάλλει τα στοιχεία μιας εγγραφής στο table Appointments. Επίσης
         ανανεώνει τα στοιχεία των αντικειμένων που δώθηκαν ως παράμετροι
@@ -118,35 +118,27 @@ class AppointmentControl:
             customer (Customer | None, optional): _description_. Defaults to None.
 
         Returns:
-            tuple[int, str]: κωδικός επιτυχίας και λόγος αποτυχίας
-            Οι κωδικοί είναι
-            - 0. Επιτυχής ανανέωση ραντεβού και πελάτη
-            - 1. Επιτυχής ανανέωση ραντεβού και επιτυχής προσθήκη νέου πελάτη
-            - 1. Επιτυχής ανανέωση ραντεβού χωρίς ανανέωση πελάτη
-            - 2. Επιτυχής ανανέωση ραντεβού με αποτυχία ανανέωσης πελάτη
-            - 3. Αποτυχία ανανέωσης ραντεβού
-            - 1. Επιτυχής ανανέωση ραντεβού με αποτυχίας ανανέωσης πελάτη
-            - 2. Αποτυχία
+            tuple[bool, str]: κωδικός επιτυχίας και λόγος αποτυχίας
         """
         logger.log_info(f"Requesting update for {appointment} for {customer}")
 
         if customer is None:
             logger.log_debug("Updating appointment without customer")
-            return self.model.update_appointment(appointment)
+            return self.model.update_appointment(appointment), ""
 
         cc = CustomerControl()
         if customer.id is None:
             logger.log_debug("Updating appointment and adding customer")
             customer = cc.create_customer(customer)
-            return self.model.update_appointment(appointment, customer.id)
+            return self.model.update_appointment(appointment, customer.id), ""
 
         if customer.id is not None:
             logger.log_debug("Updating appointment and customer")
             cc.update_customer(customer)
-            return self.model.update_appointment(appointment, customer.id)
+            return self.model.update_appointment(appointment, customer.id), ""
 
         logger.log_warn("Request Failure")
-        return False
+        return False, "Αποτυχία ενημέρωσης ραντεβού"
 
     def get_appointment_by_id(self, id: int) -> Appointment | None:
         """
