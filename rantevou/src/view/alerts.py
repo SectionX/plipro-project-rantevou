@@ -105,7 +105,7 @@ class AlertRow(ttk.Frame):
     def send_email(self):
         if self.appointment:
             if self.customer and self.customer.email:
-                mailer.send_email([self.appointment], debug=True)  # TODO change for live
+                mailer.send_email([self.appointment])
             else:
                 showerror("Customer doesn't have an email")
 

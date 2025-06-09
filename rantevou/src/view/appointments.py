@@ -126,7 +126,7 @@ class GridNavBar(ttk.Frame):
     def send_email(self):
         appointments = self._get_appointments_from_entry()
         mailer = Mailer()
-        mailer.send_email(appointments, debug=True)
+        mailer.send_email(appointments)
 
     def export_to_worksheet(self):
         appointments = self._get_appointments_from_entry()
