@@ -79,7 +79,6 @@ def main():
 
         root = Window(root)
         root.mainloop()
-        print("closing")
         root.update()
         root.quit()
 

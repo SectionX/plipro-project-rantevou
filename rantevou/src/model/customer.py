@@ -149,7 +149,7 @@ class CustomerModel:
 
         # Διαγραφή πελάτη.
         try:
-            session.refresh(customer)
+            customer = session.merge(customer)
             session.delete(customer)
             session.commit()
             self.max_id = self.__find_max_id()
@@ -228,7 +228,7 @@ class CustomerModel:
 
     def customer_search(self, query: str) -> list[Customer]:
         """
-        Μέθοοδος αναζήτησης πελάτη. Ψάχνει πελάτες με στοιχεία που
+        Μέθοδος αναζήτησης πελάτη. Ψάχνει πελάτες με στοιχεία που
         εμπεριέχουν τους χαρακτήρες του query, σε σειρά.
 
         Ο χαρακτήρας % στην sqlite3 είναι wildcard. Δηλαδή εάν το

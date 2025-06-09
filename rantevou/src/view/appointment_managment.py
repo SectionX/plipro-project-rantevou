@@ -81,6 +81,9 @@ class EditAppointmentView(SideView):
     def save(self):
         self.appointment = self.appointment_entry.get()
         self.customer = self.customer_entry.get()
+        if self.customer.name is None:
+            self.customer = None
+
         result = AppointmentControl().update_appointment(self.appointment, self.customer)
         if result is True:
             self.sidepanel.go_back()
