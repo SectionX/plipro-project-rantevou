@@ -12,4 +12,5 @@ pyinit.egg-info
 .test_commit.sh
 /rantevou/data/log.txt
 /rantevou/data/log.zip
+/rantevou/data/rantevou.db
 *xlsx
