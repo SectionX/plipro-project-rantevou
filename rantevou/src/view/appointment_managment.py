@@ -72,11 +72,11 @@ class EditAppointmentView(SideView):
 
     def delete(self):
         self.appointment = self.appointment_entry.get()
-        result = AppointmentControl().delete_appointment(self.appointment)
+        result, reason = AppointmentControl().delete_appointment(self.appointment)
         if result is True:
             self.sidepanel.go_back()
         else:
-            showerror(message="Failed to delete Appointment")
+            showerror(message=reason)
 
     def save(self):
         self.appointment = self.appointment_entry.get()
