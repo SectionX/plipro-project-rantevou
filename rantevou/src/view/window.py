@@ -10,7 +10,7 @@ from tkinter import ttk
 from typing import Any
 from .appointments import AppointmentsTab
 from .customers import CustomersTab
-from .statistics import Statistics
+from .stats import Statistics
 from .sidepanel import SidePanel, SearchBar
 from ..controller import get_config
 
