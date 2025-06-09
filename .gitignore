@@ -13,4 +13,5 @@ pyinit.egg-info
 /rantevou/data/log.txt
 /rantevou/data/log.zip
 /rantevou/data/rantevou.db
+*html
 *xlsx

@@ -190,7 +190,7 @@ class GridNavBar(ttk.Frame):
             f.writelines(buffer)
 
         webbrowser.open(filename)
-        self.after(10000, lambda: os.remove(filename))
+        # self.after(10000, lambda: os.remove(filename))
 
 
 class Grid(ttk.Frame):
