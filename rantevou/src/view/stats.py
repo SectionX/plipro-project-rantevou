@@ -6,6 +6,11 @@ import requests
 
 from .abstract_views import AppFrame
 
+from collections import defaultdict
+from statistics import mean
+from ..controller.customers_controller import CustomerControl
+from ..controller.appointments_controller import AppointmentControl
+
 
 class Statistics(AppFrame):
     def __init__(self, root):
@@ -59,7 +64,7 @@ class Statistics(AppFrame):
 
     def fetch_stats(self):
         try:
-            response = requests.get("http://localhost:5000/stats/overview")
+            response = requests.get("http://localhost:5000/stats/overview", timeout=2)
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -70,10 +75,6 @@ class Statistics(AppFrame):
                 return {}
 
     def fetch_from_db(self):
-        from collections import defaultdict
-        from statistics import mean
-        from ..controller.customers_controller import CustomerControl
-        from ..controller.appointments_controller import AppointmentControl
 
         appointments_data = AppointmentControl().get_appointments()
 
