@@ -149,7 +149,7 @@ class CustomerModel:
 
         # Διαγραφή πελάτη.
         try:
-            customer = session.merge(customer)
+            session.refresh(customer)
             session.delete(customer)
             session.commit()
             self.max_id = self.__find_max_id()

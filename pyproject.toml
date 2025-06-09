@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 [project]
 name = "rantevou"
 version = "0.9.0"
-dependencies = ["sqlalchemy", "flask", "openpyxl", "types-openpyxl", "pydantic"]
+dependencies = ["sqlalchemy", "flask", "openpyxl", "types-openpyxl", "pydantic", "matplotlib", "requests"]
 requires-python = ">=3.10"
 authors = [
 {name = "Ηλίας Στουραΐτης", email = "std168326@ac.eap.gr"},

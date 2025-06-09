@@ -8,8 +8,8 @@ from typing import Any
 
 from .sidepanel import SidePanel
 from .forms import AppointmentForm, CustomerForm
-from .abstract_views import SideView
-from .exceptions import ViewWrongDataError
+from .abstract_views import SideView, EntryWithPlaceholder
+from .exceptions import *
 from ..model.entities import Appointment, Customer
 from ..controller.appointments_controller import AppointmentControl
 from ..controller.logging import Logger
@@ -72,20 +72,20 @@ class EditAppointmentView(SideView):
 
     def delete(self):
         self.appointment = self.appointment_entry.get()
-        result, reason = AppointmentControl().delete_appointment(self.appointment)
+        result = AppointmentControl().delete_appointment(self.appointment)
         if result is True:
             self.sidepanel.go_back()
         else:
-            showerror(message=reason)
+            showerror(message="Failed to delete Appointment")
 
     def save(self):
         self.appointment = self.appointment_entry.get()
         self.customer = self.customer_entry.get()
-        result, reason = AppointmentControl().update_appointment(self.appointment, self.customer)
+        result = AppointmentControl().update_appointment(self.appointment, self.customer)
         if result is True:
             self.sidepanel.go_back()
         else:
-            showerror(message=reason)
+            showerror(message="Failed to update Appointment")
 
     def reset(self):
         for k, v in self.__dict__.items():
@@ -94,7 +94,7 @@ class EditAppointmentView(SideView):
 
     def populate_from_customer_tab(self, customer_data: Customer):
         if not (isinstance(customer_data, list) or isinstance(customer_data, Customer)):
-            raise ViewWrongDataError(self, self, customer_data)
+            raise ViewWrongDataError(customer_data)
 
         self.customer_entry.populate(customer_data)
 

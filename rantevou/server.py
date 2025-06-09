@@ -213,6 +213,50 @@ def get_customer_by_id(id) -> Response:
     else:
         return jsonify([customer.to_dict_api()])
 
+@app.route("/stats/overview")
+def get_stats_overview() -> Response:
+    from collections import defaultdict
+    from statistics import mean
+    from .src.controller.customers_controller import CustomerControl
+
+    appointments_data = AppointmentControl().get_appointments()
+
+    daily_counts = defaultdict(int)
+    weekly_counts = defaultdict(int)
+    customer_counter = defaultdict(int)
+    durations = []
+
+    for _, appointments in appointments_data.items():
+        for apt in appointments:
+            date = apt.date
+            daily_key = date.date().isoformat()
+            weekly_key = f"{date.isocalendar().year}-W{date.isocalendar().week}"
+            customer_id = apt.customer_id
+            duration = apt.duration.total_seconds() / 60
+
+            daily_counts[daily_key] += 1
+            weekly_counts[weekly_key] += 1
+            customer_counter[customer_id] += 1
+            durations.append(duration)
+
+    most_active_customer_id = max(customer_counter, key=customer_counter.get, default=None)
+    customer_ctrl = CustomerControl()
+    most_active_customer = (
+        customer_ctrl.get_customer_by_id(most_active_customer_id).to_dict_api()
+        if most_active_customer_id is not None
+        else None
+    )
+
+    average_duration = round(mean(durations), 2) if durations else 0
+
+    return jsonify({
+        "appointments_per_day": dict(sorted(daily_counts.items())),
+        "appointments_per_week": dict(sorted(weekly_counts.items())),
+        "most_active_customer": most_active_customer,
+        "most_active_customer_appointments": customer_counter.get(most_active_customer_id, 0),
+        "average_duration_minutes": average_duration
+    })
 
 def start_server(host, port, debug=True):
     app.run(host, port, debug)
+
